@@ -3,9 +3,7 @@ package paymentrouting.sourcerouting;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.PriorityQueue;
 import java.util.Vector;
 
 import gtna.graph.Edge;
@@ -13,13 +11,12 @@ import gtna.graph.Graph;
 import gtna.graph.Node;
 import treeembedding.credit.CreditLinks;
 
-public class LightningSinglePath extends SourcePathSelection {
+public class ShortestPath extends SourcePathSelection {
 	double[][] baseRateFee; 
 	
 
-	public LightningSinglePath(String feeFile) {
-		super("LIGHTNING_SINGLEPATH");
-		readFeeFile(feeFile);  
+	public ShortestPath() {
+		super("SHORTEST_PATH");  
 	}
 	
 	
@@ -27,6 +24,12 @@ public class LightningSinglePath extends SourcePathSelection {
 	@Override
 	public RoutingResult getPaths(CreditLinks edgeweights, Graph g, int src, int dst, double val, int maxtries,
 			boolean up) {
+		//give everyone same fees
+		this.baseRateFee = new double[g.getNodeCount()][2];
+		for (int i = 0; i < this.baseRateFee.length; i++) {
+			this.baseRateFee[i][0] = 1; 
+		}
+
 		HashSet<Edge> excluded = new HashSet<Edge>();
 		boolean success = false;
 		boolean impossible = false;
@@ -77,27 +80,6 @@ public class LightningSinglePath extends SourcePathSelection {
 		return new RoutingResult(path,success, tries,hops, messages, fee);
 	}
 	
-	/**
-	 * read file of the form
-	 * line 1:  #nodes NR
-	 * other lines: nodeNr baseFee feerate
-	 * @param file
-	 */
-	
-	private void readFeeFile(String file) {
-		try {
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			String line = br.readLine();
-			int nodes = Integer.parseInt(line.split(" ")[1]);
-			this.baseRateFee = new double[nodes][2];
-			for (int i = 0; i < nodes; i++) {
-				String[] parts = br.readLine().split(" ");
-				this.baseRateFee[i] = new double[] {Double.parseDouble(parts[1]), Double.parseDouble(parts[2])};
-			}
-			br.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+
 
 }

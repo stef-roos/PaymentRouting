@@ -52,7 +52,7 @@ public class Dijkstra {
 						}
 						double pot2 = edgeweights.getPot(node, neigh);
 						if (pot1 + pot2 < toroute) {
-							continue; //total capacity insuufficent -> exclude 	
+							continue; //total capacity insufficient -> exclude 	
 						}
 						
 						predeccessor[neigh] = node; 

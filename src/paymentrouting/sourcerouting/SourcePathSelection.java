@@ -33,7 +33,7 @@ public abstract class SourcePathSelection {
 	
 	public void updateAll(CreditLinks edgeweights) {
 		if (originalAll != null) {
-			reverseUpdates(edgeweights,this.lastHop);
+			reverseUpdates(edgeweights,this.originalAll);
 		} 
 	}
 	
