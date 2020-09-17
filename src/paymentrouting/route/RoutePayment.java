@@ -42,7 +42,6 @@ public class RoutePayment extends Metric{
 	protected Random rand;
 	protected boolean update; 
 	protected Transaction[] transactions;
-	//protected DistanceFunction dist;
 	protected boolean log = false;
 	protected PathSelection select;
 	protected CreditLinks edgeweights; 
@@ -98,6 +97,7 @@ public class RoutePayment extends Metric{
         HashMap<Edge, Double> originalAll = new HashMap<Edge,Double>();
 		this.transactions = ((TransactionList)g.getProperty("TRANSACTION_LIST")).getTransactions();
 		Node[] nodes = g.getNodes();
+		this.preprocess();
 		
 		this.avHops = 0;
 		this.avHopsSucc = 0; 
@@ -141,11 +141,14 @@ public class RoutePayment extends Metric{
 		    	     pps.add(new PartialPath(src, splitVal[a],new Vector<Integer>(),a));
 		        }
 		    	boolean[] excluded = new boolean[nodes.length];
+		    	Vector<PartialPath> finalPaths = new  Vector<PartialPath>();
 		    	
 		    	HashMap<Edge, Double> originalWeight = new HashMap<Edge,Double>(); //updated weights
+		    	this.transPreprocess();
 		
 		       //while current set of nodes is not empty 
 		    	while (!pps.isEmpty() && h < maxhops) {
+		    		this.stepPreprocess();
 		    		if (log) {
 		    			System.out.println("Hop " + h + " with " + pps.size() + " links ");
 		    		}
@@ -164,7 +167,6 @@ public class RoutePayment extends Metric{
 		            	}
 		            	
 		            	if (log) System.out.println("Routing at cur " + cur); 
-		                //getNextVals -> distribution of payment value over neighbors
 		                double[] partVals = this.select.getNextsVals(g, cur, dst, 
 		                		pre, excluded, this, pp.val, rand, pp.reality); 
 		                for (int l = 0; l < past.size(); l++) {
@@ -192,6 +194,9 @@ public class RoutePayment extends Metric{
 		                			if (out[k] != dst) {
 		                				next.add(new PartialPath(out[k], partVals[k], 
 		                						(Vector<Integer>)past.clone(),pp.reality));
+		                			} else {
+		                				finalPaths.add(new PartialPath(out[k], partVals[k], 
+		                						(Vector<Integer>)past.clone(),pp.reality));
 		                			}
 		                			if (log) {
 		        		    			System.out.println("add link (" + cur + "," + out[k] + ") with val "+partVals[k]);
@@ -206,6 +211,7 @@ public class RoutePayment extends Metric{
                 						(Vector<Integer>)past.clone(),pp.reality));
 		                	}
 		                } else {
+		                	finalPaths.add(pp); 
 		                	//failure to split
 		                	if (log) {
 		                		System.out.println("fail");
@@ -222,6 +228,9 @@ public class RoutePayment extends Metric{
 		            if (h == maxhops && !pps.isEmpty()) {
 		            	s = false; 
 		            }
+		            
+		            this.stepPostprocess();
+		            
 		    	}
 		    	
 		    	this.select.clear();
@@ -257,6 +266,7 @@ public class RoutePayment extends Metric{
 		    		this.succTime[slot] = this.succTime[slot]/this.tInterval;
 		    		slot++;
 		    	}
+		    	this.transPostprocess(finalPaths);
 		    }
 		    
 		    //recompute spanning trees
@@ -279,7 +289,8 @@ public class RoutePayment extends Metric{
 		this.successFirst = this.successFirst/this.transactions.length;
 		if (rest > 0) {
 		   this.succTime[this.succTime.length-1] = this.succTime[this.succTime.length-1]/rest;
-		}		
+		}	
+		this.postprocess();
 		
 		//reset weights for further metrics using them 
 				if (this.update) {
@@ -422,7 +433,49 @@ public class RoutePayment extends Metric{
 	 * @return
 	 */
 	public double getTotalCapacity(int s, int t) {
-		return this.edgeweights.getPot(s, t); 
+		return this.edgeweights.getPot(s, t)+this.edgeweights.getPot(t, s); 
+	}
+	
+	/**
+	 * preprocessing specific to child classes for whole run 
+	 */
+	public void preprocess() {
+		
+	}
+	
+	/**
+	 * preprocessing specific to child classes for one transaction  
+	 */
+	public void transPreprocess() {
+		
+	}
+	
+	/**
+	 * preprocessing specific to child classes for one routing step
+	 */
+	public void stepPreprocess() {
+		
+	}
+	
+	/**
+	 * postprocessing specific to child classes for whole run 
+	 */
+	public void postprocess() {
+		
+	}
+	
+	/**
+	 * postprocessing specific to child classes for one transaction  
+	 */
+	public void transPostprocess(Vector<PartialPath> finalP) {
+		
+	}
+	
+	/**
+	 * postprocessing specific to child classes for one routing step
+	 */
+	public void stepPostprocess() {
+		
 	}
     
 }
