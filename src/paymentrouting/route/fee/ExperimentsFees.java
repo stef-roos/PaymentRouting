@@ -81,11 +81,8 @@ public class ExperimentsFees {
 		
 		     String[] feesNames = {
 		    	"LIGHTNING_FEES_1.0_1.0E-6_false",
-		    	//"LIGHTNING_FEES_1.0_1.0E-6_true", 
 				"ABSOLUTE_DIFF_1.0_2.0_false", 
 				"ABSOLUTE_DIFF_1.0_2.0_true",
-				//"RATIO_DIFF_0.05_2.0_false",
-				//"RATIO_DIFF_0.05_2.0_true",
 				"DI_STASI_1.0_0.01_0.03"
 		    };
 		    bw = new BufferedWriter(new FileWriter(fileNew)); 
