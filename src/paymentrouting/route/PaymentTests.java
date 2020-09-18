@@ -23,16 +23,17 @@ import paymentrouting.route.fee.RoutePaymentFees;
 public class PaymentTests {
 
 	public static void main(String[] args) {
-		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
-		runSimpleAttack(); 
+		genDataSets();  
 	
 	}
 	
 
 	
 	public static void genDataSets() {
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 		Transformation[] trans = new Transformation[] {new InitCapacities(200,BalDist.EXP), 
-				new Transactions(5, TransDist.EXP, false, 10, false)};
+				new Transactions(5, TransDist.EXP, false, 1000, 2, false)};
 		Network net = new BarabasiAlbert(5000,5, trans);
 		Series.generate(net, new Metric[] {}, 1); 
 	}

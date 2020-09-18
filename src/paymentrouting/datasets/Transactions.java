@@ -19,16 +19,16 @@ public class Transactions extends Transformation {
 	TransDist td;
 	boolean cutoff;
 	int number;
-	boolean time;
+	double time; //number of transactions per /h per node 
 	boolean onlyPossible; 
 	int rec;
 	int fl;
 	
-	public Transactions(double expected, double var, TransDist d, boolean c, int n, boolean t,
+	public Transactions(double expected, double var, TransDist d, boolean c, int n, double t,
 			boolean poss) {
 		super("TRANSACTIONS", new Parameter[] {new DoubleParameter("EXPECTED", expected), 
 				new StringParameter("TRANS_DIST", d.name()), new BooleanParameter("CUTOFF", c),
-				new IntParameter("NUMBER", n), new BooleanParameter("TIME", t),
+				new IntParameter("NUMBER", n), new DoubleParameter("TIME", t),
 				new BooleanParameter("ONLY_POSS", poss)}); 
 		this.td = d;
 		switch (this.td) {
@@ -48,6 +48,34 @@ public class Transactions extends Transformation {
 		this.onlyPossible = poss;
 		this.rec = 0;
 		this.fl = 0;
+	}
+	
+	public Transactions(double expected, double var, TransDist d, boolean c, int n, double t) {
+		this(expected, var, d,c,n,t,false); 
+	}
+	
+	public Transactions(double expected, TransDist d, boolean c, int n, double t) {
+		this(expected, -1, d,c,n,t, false); 
+	}
+	
+	public Transactions(double expected, TransDist d, boolean c, int n, double t, boolean poss) {
+		this(expected, -1, d,c,n,t, poss); 
+	}
+	
+
+	/**
+	 * for backward compatibility with t as boolean => only used 
+	 * @param expected
+	 * @param var
+	 * @param d
+	 * @param c
+	 * @param n
+	 * @param t
+	 * @param poss
+	 */
+	public Transactions(double expected, double var, TransDist d, boolean c, int n, boolean t, 
+			boolean poss) {
+		this(expected, var,d,c,n,-1,poss); 
 	}
 	
 	public Transactions(double expected, double var, TransDist d, boolean c, int n, boolean t) {
@@ -115,6 +143,12 @@ public class Transactions extends Transformation {
 		int nodes = g.getNodeCount();
 		CreditLinks edgeweights = (CreditLinks) g.getProperty("CREDIT_LINKS");
 		double sumTime = 0;
+		//compute parameters for exponentially distributed arrival intervals 
+		double lambdaIA = 0; //(number of transactions per second)^-1 
+		if (this.time > -1) {
+		    double trsec = nodes*this.time/3600; 
+		    lambdaIA = 1/trsec; 
+		}
 		Transaction[] trs = new Transaction[number];
 		for (int i = 0; i < number; i++) {
 			//select source and destination randomly
@@ -141,21 +175,20 @@ public class Transactions extends Transformation {
 			
 			//create transaction 
 			Transaction tr; 
-			if (!this.time) {
+			if (this.time == -1) {
 				tr = new Transaction(i,val,s,r);
 			} else {
 				tr = new Transaction(sumTime,val,s,r);
-				double delay = rand.nextDouble();
+				double d = rand.nextDouble();
+				//inversion method for d=exp(-lambda*delay) as distribution assumed to be Poisson 
+				double delay = -lambdaIA*Math.log(d); 
 				sumTime = sumTime + delay; 
 			}
 			trs[i] = tr;
-			
 		}
-		g.addProperty("TRANSACTION_LIST", new TransactionList(trs, this.time, this.rec, this.fl));
+		g.addProperty("TRANSACTION_LIST", new TransactionList(trs, this.time==-1?false:true, this.rec, this.fl));
 		return g;
 	}
-	
-	
 
 	@Override
 	public boolean applicable(Graph g) {
