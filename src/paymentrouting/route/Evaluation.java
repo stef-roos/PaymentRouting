@@ -26,7 +26,7 @@ public class Evaluation {
 	 */
 
 	public static void main(String[] args) {
-		attackEval();  
+		evalValTrees();  
 	}
 	
 	public static void attackEval() {
@@ -214,8 +214,8 @@ public class Evaluation {
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/lighting-nopadding/");
         
         int[] trees = {1,2,3,4,5,6,7,8,9,10}; 
-        int[] vals = {1, 5, 20, 50, 100, 200, 300};
-        //int[] vals = {100};
+       // int[] vals = {1, 5, 20, 50, 100, 200, 300};
+        int[] vals = {20};
 		int trs = 10000; 
 
 		String file  = "lightning/lngraph_2020_03_01__04_00.graph";

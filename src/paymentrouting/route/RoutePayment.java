@@ -47,6 +47,12 @@ public class RoutePayment extends Metric{
 	protected CreditLinks edgeweights; 
 	protected int tInterval = 1000;
 	protected int recompute_epoch;
+	long[] trys;
+	long[] path;
+	long[] pathSucc;
+	long[] mes;
+	long[] mesSucc;
+	protected HashMap<Edge, Double> originalAll;
 	
 	public RoutePayment(PathSelection ps, int trials, boolean up) {
 		this(ps,trials,up,Integer.MAX_VALUE); 
@@ -91,36 +97,15 @@ public class RoutePayment extends Metric{
 	@Override
 	public void computeData(Graph g, Network n, HashMap<String, Metric> m) {
 		//init values
-		rand = new Random();
-		this.select.initRoutingInfo(g, rand);
-		edgeweights = (CreditLinks) g.getProperty("CREDIT_LINKS");
-        HashMap<Edge, Double> originalAll = new HashMap<Edge,Double>();
-		this.transactions = ((TransactionList)g.getProperty("TRANSACTION_LIST")).getTransactions();
+		this.preprocess(g);
 		Node[] nodes = g.getNodes();
-		this.preprocess();
-		
-		this.avHops = 0;
-		this.avHopsSucc = 0; 
-		this.avMess = 0;
-		this.avMessSucc = 0; 
-		this.successFirst = 0;
-		this.success = 0;
-		long[] trys = new long[2];
-		long[] path = new long[2];
-		long[] pathSucc = new long[2];
-		long[] mes = new long[2];
-		long[] mesSucc = new long[2];
-		int count = this.transactions.length;
-		int len = this.transactions.length/this.tInterval; 
-		int rest = this.transactions.length % this.tInterval; 
-		if (rest == 0) {
-		    this.succTime = new double[len];
-		} else {
-			this.succTime = new double[len+1];
-		}
-		int slot = 0;
-		
-		//iterate over transactions
+		int count = nodes.length; 
+		this.run(g); 
+		this.postprocess(count);	
+	}
+	
+    public void run(Graph g) {
+    	Node[] nodes = g.getNodes();
 		for (int i = 0; i < this.transactions.length; i++) {
 			Transaction tr = this.transactions[i];
 			int src = tr.getSrc();
@@ -136,19 +121,17 @@ public class RoutePayment extends Metric{
 		    for (int t = 0; t < this.trials; t++) {
 		//set initial set of current nodes and partial payment values to (src, totalVal) 
 		    	Vector<PartialPath> pps = new  Vector<PartialPath>();
-		    	double[] splitVal = this.splitRealities(val, select.getDist().startR, rand);
-		    	for (int a = 0; a < select.getDist().startR; a++) {
+		    	double[] splitVal = this.splitRealities(val, select.getDist().getStartR(), rand);
+		    	for (int a = 0; a < select.getDist().getStartR(); a++) {
 		    	     pps.add(new PartialPath(src, splitVal[a],new Vector<Integer>(),a));
 		        }
 		    	boolean[] excluded = new boolean[nodes.length];
 		    	Vector<PartialPath> finalPaths = new  Vector<PartialPath>();
 		    	
 		    	HashMap<Edge, Double> originalWeight = new HashMap<Edge,Double>(); //updated weights
-		    	this.transPreprocess();
 		
 		       //while current set of nodes is not empty 
 		    	while (!pps.isEmpty() && h < maxhops) {
-		    		this.stepPreprocess();
 		    		if (log) {
 		    			System.out.println("Hop " + h + " with " + pps.size() + " links ");
 		    		}
@@ -229,44 +212,10 @@ public class RoutePayment extends Metric{
 		            	s = false; 
 		            }
 		            
-		            this.stepPostprocess();
 		            
 		    	}
 		    	
-		    	this.select.clear();
-		    	if (!s) {
-		    		h--; 
-		    		//payments were not made -> return to original weights
-		    		this.weightUpdate(edgeweights,originalWeight);
-		    		if (log) {
-		    			System.out.println("Failure");
-		    		}
-		    	} else {
-		    		if (!this.update) {
-		    			//return credit links to original state
-		    			this.weightUpdate(edgeweights,originalWeight);
-		    		}
-		    		//update stats for this transaction 
-			    	pathSucc = inc(pathSucc, h);
-			    	mesSucc = inc(mesSucc, x);
-			    	
-			    	this.succTime[slot]++;
-		    		this.success++;
-		    		if (t == 0) {
-		    			this.successFirst++;
-		    		}
-		    		trys = inc(trys,t);
-		    		if (log) {
-		    			System.out.println("Success");
-		    		}
-		    	}
-		    	path = inc(path, h);
-		    	mes = inc(mes,x);
-		    	if ((i+1) % this.tInterval == 0) {
-		    		this.succTime[slot] = this.succTime[slot]/this.tInterval;
-		    		slot++;
-		    	}
-		    	this.transPostprocess(finalPaths);
+		    	this.transPostprocess(finalPaths, s, h, x, i, t, originalWeight);
 		    }
 		    
 		    //recompute spanning trees
@@ -274,29 +223,10 @@ public class RoutePayment extends Metric{
 		    	this.select.initRoutingInfo(g, rand);
 		    }
 		}
-
-		//compute final stats
-		this.hopDistribution = new Distribution(path,count);
-		this.messageDistribution = new Distribution(mes,count);
-		this.hopDistributionSucc = new Distribution(pathSucc,(int)this.success);
-		this.messageDistributionSucc = new Distribution(mesSucc,(int)this.success);
-		this.trysDistribution = new Distribution(trys,count);
-		this.avHops = this.hopDistribution.getAverage();
-		this.avHopsSucc = this.hopDistributionSucc.getAverage();
-		this.avMess = this.messageDistribution.getAverage();
-		this.avMessSucc = this.messageDistributionSucc.getAverage();
-		this.success = this.success/this.transactions.length;
-		this.successFirst = this.successFirst/this.transactions.length;
-		if (rest > 0) {
-		   this.succTime[this.succTime.length-1] = this.succTime[this.succTime.length-1]/rest;
-		}	
-		this.postprocess();
-		
-		//reset weights for further metrics using them 
-				if (this.update) {
-					this.weightUpdate(edgeweights, originalAll);
-				}
 	}
+	
+
+	
 	
 	@Override
 	public boolean writeData(String folder) {
@@ -356,7 +286,7 @@ public class RoutePayment extends Metric{
 		return g.hasProperty("CREDIT_LINKS") && g.hasProperty("TRANSACTION_LIST");
 	}
 	
-	double[] splitRealities(double val, int r, Random rand) {
+	protected double[] splitRealities(double val, int r, Random rand) {
 		double[] res = new double[r];
 		for (int i = 0; i < r-1; i++) {
 			res[i] = rand.nextDouble()*val;
@@ -437,46 +367,111 @@ public class RoutePayment extends Metric{
 	}
 	
 	/**
-	 * preprocessing specific to child classes for whole run 
+	 * preprocessing 
 	 */
-	public void preprocess() {
+	public void preprocess(Graph g) {
+		rand = new Random();
+		this.select.initRoutingInfo(g, rand);
+		edgeweights = (CreditLinks) g.getProperty("CREDIT_LINKS");
+		this.transactions = ((TransactionList)g.getProperty("TRANSACTION_LIST")).getTransactions();
+		originalAll = new HashMap<Edge,Double>();
 		
+		this.avHops = 0;
+		this.avHopsSucc = 0; 
+		this.avMess = 0;
+		this.avMessSucc = 0; 
+		this.successFirst = 0;
+		this.success = 0;
+		this.trys = new long[2];
+		this.path = new long[2];
+		this.pathSucc = new long[2];
+		this.mes = new long[2];
+		this.mesSucc = new long[2];
+		int len = this.transactions.length/this.tInterval; 
+		int rest = this.transactions.length % this.tInterval; 
+		if (rest == 0) {
+		    this.succTime = new double[len];
+		} else {
+			this.succTime = new double[len+1];
+		}
 	}
 	
-	/**
-	 * preprocessing specific to child classes for one transaction  
-	 */
-	public void transPreprocess() {
-		
-	}
 	
-	/**
-	 * preprocessing specific to child classes for one routing step
-	 */
-	public void stepPreprocess() {
-		
-	}
 	
 	/**
 	 * postprocessing specific to child classes for whole run 
 	 */
-	public void postprocess() {
-		
+	public void postprocess(int count) {
+		//compute final stats
+				this.hopDistribution = new Distribution(path,count);
+				this.messageDistribution = new Distribution(mes,count);
+				this.hopDistributionSucc = new Distribution(pathSucc,(int)this.success);
+				this.messageDistributionSucc = new Distribution(mesSucc,(int)this.success);
+				this.trysDistribution = new Distribution(trys,count);
+				this.avHops = this.hopDistribution.getAverage();
+				this.avHopsSucc = this.hopDistributionSucc.getAverage();
+				this.avMess = this.messageDistribution.getAverage();
+				this.avMessSucc = this.messageDistributionSucc.getAverage();
+				this.success = this.success/this.transactions.length;
+				this.successFirst = this.successFirst/this.transactions.length;
+				int rest = this.transactions.length % this.tInterval;
+				if (rest > 0) {
+				   this.succTime[this.succTime.length-1] = this.succTime[this.succTime.length-1]/rest;
+				}
+				//reset weights for further metrics using them 
+				if (this.update) {
+					this.weightUpdate(edgeweights, originalAll);
+				}
 	}
 	
 	/**
 	 * postprocessing specific to child classes for one transaction  
 	 */
-	public void transPostprocess(Vector<PartialPath> finalP) {
-		
+	public void transPostprocess(Vector<PartialPath> finalP, boolean s, int h, int x, int i, int t,
+			 HashMap<Edge,Double> originalWeight) {
+		this.select.clear();
+    	if (!s) {
+    		//payments were not made -> return to original weights
+    		this.weightUpdate(edgeweights,originalWeight);
+    	} else {
+    		if (!this.update) {
+    			//return credit links to original state
+    			this.weightUpdate(edgeweights,originalWeight);
+    		}
+    	}
+    	transStats(s,h,x,i,t); 
 	}
 	
-	/**
-	 * postprocessing specific to child classes for one routing step
-	 */
-	public void stepPostprocess() {
-		
+	public void transStats(boolean s, int h, int x, int i, int t) {
+    	int slot = i/this.tInterval; 
+		if (!s) {
+    		h--; 
+    		if (log) {
+    			System.out.println("Failure");
+    		}
+    	} else {
+    		//update stats for this transaction 
+	    	pathSucc = inc(pathSucc, h);
+	    	mesSucc = inc(mesSucc, x);
+	    	this.succTime[slot]++;
+    		this.success++;
+    		if (t == 0) {
+    			this.successFirst++;
+    		}
+    		trys = inc(trys,t);
+    		if (log) {
+    			System.out.println("Success");
+    		}
+    	}
+    	path = inc(path, h);
+    	mes = inc(mes,x);
+    	if ((i+1) % this.tInterval == 0) {
+    		this.succTime[slot] = this.succTime[slot]/this.tInterval;
+    		slot++;
+    	}
 	}
+	
+	
     
 }
 

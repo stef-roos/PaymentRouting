@@ -7,7 +7,7 @@ import gtna.graph.Graph;
 public abstract class DistanceFunction {
      String name;
      public int realities;
-     int startR;
+     private int startR;
      Timelock timelockmode;
      int lock; 
      
@@ -32,7 +32,7 @@ public abstract class DistanceFunction {
      public DistanceFunction(String name, int realities, int s, Timelock lockMode, int lockval) {
     	 this.name = name;
     	 this.realities = realities;
-    	 this.startR = s;
+    	 this.setStartR(s);
     	 this.timelockmode = lockMode;
     	 this.lock = lockval; 
      }
@@ -82,6 +82,14 @@ public abstract class DistanceFunction {
      public abstract boolean isCloser(int a, int b, int dst, int r);
      
      public abstract void initRouteInfo(Graph g, Random rand);
+
+	public int getStartR() {
+		return startR;
+	}
+
+	public void setStartR(int startR) {
+		this.startR = startR;
+	}
      
      
      
