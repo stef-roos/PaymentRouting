@@ -12,16 +12,44 @@ public class SummarizeResults {
 	public static String path = "";
 	
 	public static void main(String[] args) {
-
-		String[][] singles = {{"SUCCESS=", "succ"},
-				              {"MES_AV=", "mes"},
-		                      {"MES_AV_SUCC=", "mesSucc"}};
-		for (int i = 0; i < singles.length; i++) {
-			resAttacks(singles[i][0], singles[i][1]);
-//		          resTopology(singles[i][0], singles[i][1]); 
-//		          resCapTrans(singles[i][0], singles[i][1]);
-//		          resVals(singles[i][0], singles[i][1]);
-//		          resTrees(singles[i][0], singles[i][1]);
+        dynConcurrent("SUCCESS="); 
+//		String[][] singles = {{"SUCCESS=", "succ"},
+//				              {"MES_AV=", "mes"},
+//		                      {"MES_AV_SUCC=", "mesSucc"}};
+//		for (int i = 0; i < singles.length; i++) {
+//			resAttacks(singles[i][0], singles[i][1]);
+////		          resTopology(singles[i][0], singles[i][1]); 
+////		          resCapTrans(singles[i][0], singles[i][1]);
+////		          resVals(singles[i][0], singles[i][1]);
+////		          resTrees(singles[i][0], singles[i][1]);
+//		}
+	}
+	
+	public static void dynConcurrent(String single) {
+		String[] vals = {"25.0", "100.0"};
+		String[] rates = {"0.1", "0.5", "1.0", "2.0"};
+		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
+		String[] dist = new String[] {
+				"HOP_DISTANCE",
+				"SPEEDYMURMURS_MULTI_5", 
+		};
+		for (int j = 0; j < vals.length; j++) {
+			for (int r = 0; r < rates.length; r++) {
+				String line = vals[j] + " & " + rates[r];
+				for (int k = 0; k < dist.length; k++) {
+					for (int m = 0; m < algos.length; m++) {
+						double[] res = getSingleVar("data/con-lightning/"
+								+ "READABLE_FILE_LIGHTNING-6329--INIT_CAPACITIES-200.0-EXP--"
+								+ "TRANSACTIONS-"+vals[j]+"-EXP-false-1000000-"+rates[r]+"-false/"
+								+ "ROUTE_PAYMENT-1-true-"+dist[k]+"-"+algos[m]+"-2147483647-0.1"
+								+ "/_singles.txt",
+								single); 
+						line = line + " & " + "$" + 
+							      String.format("%.2f", res[0]) + " \\pm " + String.format("%.3f", res[1]) + "$"; 
+					}
+				}
+				System.out.println(line + "\\\\"); 
+			}
 		}
 	}
 	
@@ -448,7 +476,7 @@ public class SummarizeResults {
 	
 	
 	public static double[] getSingleVar(String file, String single) {
-		System.out.println(file); 
+		//System.out.println(file); 
 		double[] res = null;
 		try { 
 		    BufferedReader br = new BufferedReader(new FileReader(file));

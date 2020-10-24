@@ -18,6 +18,7 @@ import paymentrouting.datasets.Transactions;
 import paymentrouting.datasets.Transactions.TransDist;
 import paymentrouting.route.attack.ColludingDropSplits;
 import paymentrouting.route.attack.NonColludingDropSplits;
+import paymentrouting.route.concurrency.RoutePaymentConcurrent;
 
 public class Evaluation {
 	/**
@@ -26,7 +27,7 @@ public class Evaluation {
 	 */
 
 	public static void main(String[] args) {
-		evalValTrees();  
+		dynamicConcurrentEval(); 
 	}
 	
 	public static void attackEval() {
@@ -71,14 +72,19 @@ public class Evaluation {
 	}
 	
 	public static void dynamicEval() {
-		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
-		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
-		Config.overwrite("MAIN_DATA_FOLDER", "./data/dyn-lightning/");
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/dynComp/");
+//		int init = 200; 
+//		int[] trval = {10,100};
+//		int runs = 20;
+//		int trs = 1000000;
+//		int[] trees = {1,3,5}; 
 		int init = 200; 
-		int[] trval = {10,100};
-		int runs = 20;
+		int[] trval = {100};
+		int runs = 10;
 		int trs = 1000000;
-		int[] trees = {1,3,5}; 
+		int[] trees = {5}; 
 		TransDist td = TransDist.EXP;
 		BalDist bd = BalDist.EXP;
 		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
@@ -114,6 +120,56 @@ public class Evaluation {
 		m[index++] = new TransactionStats();
 		Series.generate(net, m, runs);
 	}	
+	
+	public static void dynamicConcurrentEval() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/con-lightning/");
+		int init = 200; 
+		int[] trval = {100, 25};
+		int runs = 10;
+		int trs = 1000000;
+		int[] trees = {5}; 
+		double[] lat = {0.1};
+		double[] trh = {100}; 
+		TransDist td = TransDist.EXP;
+		BalDist bd = BalDist.EXP;
+		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
+		for (int j = 0; j < lat.length; j++) {
+			for (int k =0; k < trh.length; k++) {
+				for (int i = 0; i < trval.length; i++) {
+			        dynamicConcurrent(init, trval[i], runs, 
+					trs, trees, td, bd, file, lat[j], trh[k]);
+				}
+			}
+		}
+	}
+	
+	public static void dynamicConcurrent(int initCap, int trval, int runs, 
+			int trs, int[] trees, TransDist td, BalDist bd, String file, double latency, double trh) {
+		Transformation[] trans = new Transformation[] {
+				new InitCapacities(initCap,0.05*initCap, bd), 
+				new Transactions(trval, 0.1*trval, td, false, trs,  trh, false)};
+		Network net = new ReadableFile("LIGHTNING", "LIGHTNING", file, trans);
+		DistanceFunction hop = new HopDistance();
+		DistanceFunction[] speedyMulti = new SpeedyMurmursMulti[trees.length];
+		for (int i = 0; i < speedyMulti.length; i++) {
+			speedyMulti[i] = new SpeedyMurmursMulti(trees[i]);
+		}
+		int trials = 1;
+		Metric[] m = new Metric[3+3*trees.length+1]; 
+		int index = 0;
+		m[index++] =  new RoutePaymentConcurrent(new ClosestNeighbor(hop),trials, latency);
+		m[index++] =  new RoutePaymentConcurrent(new SplitIfNecessary(hop), trials, latency);	
+		m[index++] =  new RoutePaymentConcurrent(new SplitClosest(hop),trials, latency); 
+		for (int i = 0; i < trees.length; i++){
+			m[index++] =  new RoutePaymentConcurrent(new ClosestNeighbor(speedyMulti[i]),trials, latency);
+			m[index++] =  new RoutePaymentConcurrent(new SplitIfNecessary(speedyMulti[i]), trials, latency);
+			m[index++] =  new RoutePaymentConcurrent(new SplitClosest(speedyMulti[i]),trials, latency);
+		}	
+		m[index++] = new TransactionStats();
+		Series.generate(net, m, runs);
+	}
 	
 	public static void locksEval() {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);

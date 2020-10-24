@@ -99,9 +99,8 @@ public class RoutePayment extends Metric{
 		//init values
 		this.preprocess(g);
 		Node[] nodes = g.getNodes();
-		int count = nodes.length; 
 		this.run(g); 
-		this.postprocess(count);	
+		this.postprocess();	
 	}
 	
     public void run(Graph g) {
@@ -401,13 +400,13 @@ public class RoutePayment extends Metric{
 	/**
 	 * postprocessing specific to child classes for whole run 
 	 */
-	public void postprocess(int count) {
+	public void postprocess() {
 		//compute final stats
-				this.hopDistribution = new Distribution(path,count);
-				this.messageDistribution = new Distribution(mes,count);
+				this.hopDistribution = new Distribution(path,this.transactions.length);
+				this.messageDistribution = new Distribution(mes,this.transactions.length);
 				this.hopDistributionSucc = new Distribution(pathSucc,(int)this.success);
 				this.messageDistributionSucc = new Distribution(mesSucc,(int)this.success);
-				this.trysDistribution = new Distribution(trys,count);
+				this.trysDistribution = new Distribution(trys,this.transactions.length);
 				this.avHops = this.hopDistribution.getAverage();
 				this.avHopsSucc = this.hopDistributionSucc.getAverage();
 				this.avMess = this.messageDistribution.getAverage();

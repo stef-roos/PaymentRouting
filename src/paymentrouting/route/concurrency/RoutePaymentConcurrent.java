@@ -119,16 +119,17 @@ public class RoutePaymentConcurrent extends RoutePayment {
    						if (this.update && !originalAll.containsKey(e)) {
    							originalAll.put(e, w); 
    						}
-   						edgeweights.setWeight(curN,out[k],partVals[k]);
+   						this.lock(curN, out[k], partVals[k]); 
                			if (out[k] != cur.getDst()) {
                				//more hops
                				next.add(new PartialPath(out[k], partVals[k], 
                						(Vector<Integer>)past.clone(),pp.reality));
                			} else {
                				//destination reached 
-               				past.add(cur.getDst()); 
+               				Vector<Integer> res = (Vector<Integer>)past.clone();
+               				res.add(cur.getDst()); 
                				next.add(new PartialPath(out[k], partVals[k], 
-               						past,pp.reality));
+               						res,pp.reality));
                			}
                			
                			if (log) {
@@ -145,10 +146,11 @@ public class RoutePaymentConcurrent extends RoutePayment {
                	}
                } else {
 		            //if not next hops found: schedule unlock for failed partial path
-            	   past.add(-1);
             	   this.schedulePath(past, curTime, pp.val, false);
-            	   next.add(new PartialPath(curN, pp.val, 
-      						past,pp.reality));
+            	   Vector<Integer> res = (Vector<Integer>)past.clone();
+      				res.add(-1);
+            	   next.add(new PartialPath(-1, pp.val, 
+      						res,pp.reality));
                }
            } 
 		   //update entry in ongoingTr, add new next event in qTr
@@ -175,7 +177,13 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 * potential minus all locked collateral 
 	 */
 	public double computePotential(int s, int t) {
-	    double v = locked.get(new Edge(s,t));  
+		Edge e = new Edge(s,t);
+		double v; 
+		if (locked.containsKey(e)) {
+	        v = locked.get(e);   
+		} else {
+			v = 0;
+		}
 		return this.edgeweights.getPot(s, t)-v;
 	}
 	
@@ -188,11 +196,18 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 */
 	public boolean lock(int s, int t, double v) {
 		double max = this.computePotential(s, t);
-		if (max < v) return false; 
+		if (max < v) {
+			System.out.println("s=" + s + " t="+t + " max="+max + " v="+v); 
+			return false; 
+		}
 		//add to already locked collateral
 		Edge e = new Edge(s,t); 
-		double locked = this.locked.get(e);
+		Double locked = this.locked.get(e);
+		if (locked == null) {
+			locked = 0.0; 
+		}
 		locked = locked + v;
+		if (log) System.out.println("Locked value " + v + "for s=" + s + " t=" + t); 
 		this.locked.put(e, locked);
 		return true; 
 	}
@@ -203,10 +218,13 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 */
 	public void unlock(ScheduledUnlock lock) {
 		//remove from locked 
+		if (!locked.containsKey(lock.edge)) {
+			System.out.println("WTF"); 
+		}
 		double locked = this.locked.get(lock.edge);
 		locked = locked - lock.val; 
-		if (locked < 0) {
-			throw new IllegalArgumentException("less than zero logged collateral"); 
+		if (locked < -0.0000001) {
+			throw new IllegalArgumentException("less than zero logged collateral " + locked); 
 		}
 		this.locked.put(lock.edge, locked);
 		//update funds 
@@ -241,16 +259,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			//get path info
 			PartialPath p = paths.get(i); 
 			Vector<Integer> vec = p.pre; 
-			double step = curTime + this.linklatency; 
-			int t = vec.get(vec.size()-1); 
-			for (int j = vec.size()-2; j> 0; j++) {
-				//schedule lock and increase timeout 
-				int s = vec.get(j);
-				ScheduledUnlock lock = new ScheduledUnlock(new Edge(s,t), step, true, p.val); 
-				this.qLocks.add(lock); 
-				step = step + this.linklatency; 
-				t = s; 
-			}
+			this.schedulePath(vec, curTime, p.val, true);
 		}
 	}
 
@@ -278,11 +287,13 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		}	
 		int dstKnows = 2*maxFailed + 1-h; //go along path twice plus sender informs receiver (first h steps already over at curtime)
 		curTime = Math.max(curTime, dstKnows); //destination starts resolving locks when it is a) informed and b) paths have reached it
-		//schedule locks for all partial paths
+		//schedule locks for all successful partial paths as failures already been done 
 		for (int i = 0; i < vec2.size(); i++) {
 			PartialPath p = vec2.get(i); 
 			Vector<Integer> vec = p.pre; 
-			this.schedulePath(vec, curTime, p.val, false);
+			if (vec.get(vec.size()-1) == dst) {
+			   this.schedulePath(vec, curTime, p.val, false);
+			}   
 		}
 	}	
 	
@@ -295,9 +306,17 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	public void schedulePath(Vector<Integer> vec, double curTime, double val, boolean succ) {
 		double step = curTime + this.linklatency; 
 		int t = vec.get(vec.size()-1); 
-		for (int j = vec.size()-2; j> 0; j++) {
+		for (int j = vec.size()-2; j>= 0; j--) {
 			//schedule lock and increase timeout 
 			int s = vec.get(j);
+			if (!this.locked.containsKey(new Edge(s,t))) {
+				System.out.println("Not contained in locks "+s + "," + t);
+				String path = "";
+				for (int i = 0; i < vec.size(); i++) {
+					path = path + vec.get(i) + " "; 
+				}
+				System.out.println("Path "+path);
+			}
 			ScheduledUnlock lock = new ScheduledUnlock(new Edge(s,t), step, succ, val); 
 			this.qLocks.add(lock); 
 			step = step + this.linklatency; 
@@ -338,11 +357,11 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		int x = 0; //messages
 		for (int i = 0; i < vec.size(); i++) {
 			Vector<Integer> p = vec.get(i).pre;
-			Integer last = p.get(p.size()-1);
-			int l = p.size(); 
-			if (last == -1) {
-				l--;
-			}
+//			Integer last = p.get(p.size()-1);
+			int l = p.size()-1; 
+//			if (last == -1) {
+//				l--; //not needed as  RoutePayment stats method does it 
+//			}
 			if (l > h) {
 				h = l;
 			}
