@@ -1,0 +1,11 @@
+# Name of the Graph:
+SIMPLETEST
+# Number of Nodes:
+4
+# Number of Edges:
+8
+
+0:1;2
+1:0;2
+2:0;1;3
+3:2

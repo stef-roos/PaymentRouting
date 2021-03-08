@@ -1,0 +1,13 @@
+# Graph Property Class
+paymentrouting.datasets.TransactionList
+# Key
+TRANSACTION_LIST
+TRANSACTIONS: 8
+1.0 4 5
+2.0 4 5
+3.0 4 5
+4.0 4 5 
+1.0 4 6
+2.0 4 6
+3.0 4 6
+4.0 4 6
