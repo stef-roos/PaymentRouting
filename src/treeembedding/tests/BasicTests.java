@@ -1,16 +1,14 @@
 package treeembedding.tests;
 
 import gtna.data.Series;
-import gtna.graph.Graph;
-import gtna.io.graphReader.GtnaGraphReader;
-import gtna.io.graphWriter.GtnaGraphWriter;
 import gtna.metrics.Metric;
 import gtna.networks.Network;
 import gtna.networks.model.BarabasiAlbert;
+import gtna.networks.util.ReadableFile;
 import gtna.transformation.Transformation;
-import gtna.transformation.edges.RandomEdgeWeights;
 import gtna.transformation.partition.LargestStronglyConnectedComponent;
 import gtna.util.Config;
+import paymentrouting.util.BetweennessGreedy;
 import treeembedding.treerouting.TreerouteCPLRAP;
 import treeembedding.treerouting.TreerouteOnly;
 import treeembedding.treerouting.TreerouteSilentW;
@@ -23,12 +21,9 @@ public class BasicTests {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		RandomEdgeWeights trans = new RandomEdgeWeights(0,10);
-		Graph g = (new BarabasiAlbert(20,3,null)).generate();
-		g = trans.transform(g);
-		(new GtnaGraphWriter()).writeWithProperties(g, "data/EW.graph");
-		(new GtnaGraphReader()).readWithProperties("data/EW.graph");
-
+		Metric[] m = new Metric[] {new BetweennessGreedy(100,true)}; 
+		Network net = new ReadableFile("B10000", "B10000", "./data/betweenness10000.graph", null);
+        Series.generate(net, m, 10); 
 	}
 	
 	public static void BAsimple(int nodes, int t, int tau){

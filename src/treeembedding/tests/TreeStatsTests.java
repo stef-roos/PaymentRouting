@@ -27,10 +27,10 @@ public class TreeStatsTests {
 		//construct network 
 		Network net = new BarabasiAlbert(100,3,trans);
 		
-		//metrics: execute 3 routing algorithms, each on tau <= t of the trees; 100 random source-dest pairs
+		//metrics: execute tree stats metric 
 		Metric[] m = new Metric[]{new TreeStats()};
 		
-		//run test for 5 trials
+		//run test for 3 trials
 		Series.generate(net, m, 3);
 	}
 	
