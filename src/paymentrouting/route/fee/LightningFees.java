@@ -1,7 +1,6 @@
-package paymentrouting.route;
+package paymentrouting.route.fee;
 
 import gtna.graph.Graph;
-import paymentrouting.route.fee.FeeComputation;
 import treeembedding.credit.CreditLinks;
 
 public class LightningFees extends FeeComputation {

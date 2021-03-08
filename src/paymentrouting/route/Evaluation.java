@@ -160,7 +160,7 @@ public class Evaluation {
 	public static void topologyEval() {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
-		Config.overwrite("MAIN_DATA_FOLDER", "./data/check-changes/");
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/topology/");
 		int init = 200; 
 		int trval = 100;
 		int runs = 20;

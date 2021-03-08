@@ -19,7 +19,6 @@ import paymentrouting.datasets.Transactions;
 import paymentrouting.datasets.Transactions.TransDist;
 import paymentrouting.route.ClosestNeighbor;
 import paymentrouting.route.DistanceFunction;
-import paymentrouting.route.LightningFees;
 import paymentrouting.route.SpeedyMurmurs;
 import paymentrouting.sourcerouting.ShortestPath;
 import paymentrouting.sourcerouting.SourceRouting;

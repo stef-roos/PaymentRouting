@@ -17,6 +17,7 @@ import paymentrouting.route.attack.ColludingDropSplits;
 import paymentrouting.route.attack.NonColludingDropSplits;
 import paymentrouting.route.fee.AbsoluteDiffFee;
 import paymentrouting.route.fee.FeeComputation;
+import paymentrouting.route.fee.LightningFees;
 import paymentrouting.route.fee.RatioDiffFee;
 import paymentrouting.route.fee.RoutePaymentFees;
 
@@ -24,11 +25,53 @@ public class PaymentTests {
 
 	public static void main(String[] args) {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
-		runSimpleAttack(); 
+		runSimpleTestSynthetic(); 
 	
 	}
 	
+	public static void runSimpleTest() {
+		Network net = new ReadableFile("DS", "DS", "data/simple/simple2_graph.txt", null);
+		DistanceFunction hop = new HopDistance();
+		DistanceFunction speedyMulti = new SpeedyMurmursMulti(2);
+		int trials = 1;
+		boolean up = false; 
+        Metric[] m = new Metric[] {new RoutePayment(new ClosestNeighbor(hop),trials,up),
+				                   new RoutePayment(new ClosestNeighbor(speedyMulti),trials,up),
+				                   new RoutePayment(new SplitIfNecessary(hop),trials,up),
+				                   new RoutePayment(new SplitIfNecessary(speedyMulti),trials,up),
+				                   new RoutePayment(new SplitClosest(hop),trials,up),
+				                   new RoutePayment(new SplitClosest(speedyMulti),trials,up),
+				                   new RoutePayment(new RandomSplit(hop),trials,up),
+				                   new RoutePayment(new RandomSplit(speedyMulti),trials,up)
+                                   }; 
+		Series.generate(net, m, 1); 
+	}
+	
+	public static void runSimpleTestSynthetic() {
+		
+		Transformation[] trans = new Transformation[] {
+				new InitCapacities(200,0.05*200, BalDist.EXP), 
+				new Transactions(20, 0.1*20, TransDist.EXP, false, 15, false, false)};
+		Network net = new BarabasiAlbert(30,3, trans);
+		DistanceFunction hop = new HopDistance();
+		DistanceFunction speedyMulti = new SpeedyMurmursMulti(2);
+		int trials = 1;
+		boolean up = false; 
+        Metric[] m = new Metric[] {new RoutePayment(new ClosestNeighbor(hop),trials,up),
+				                   new RoutePayment(new ClosestNeighbor(speedyMulti),trials,up),
+				                   new RoutePayment(new SplitIfNecessary(hop),trials,up),
+				                   new RoutePayment(new SplitIfNecessary(speedyMulti),trials,up),
+				                   new RoutePayment(new SplitClosest(hop),trials,up),
+				                   new RoutePayment(new SplitClosest(speedyMulti),trials,up),
+				                   new RoutePayment(new RandomSplit(hop),trials,up),
+				                   new RoutePayment(new RandomSplit(speedyMulti),trials,up)
+                                   }; 
+		Series.generate(net, m, 1); 
+	}
 
+	
+	
+	
 	
 	public static void genDataSets() {
 		Transformation[] trans = new Transformation[] {new InitCapacities(200,BalDist.EXP), 
@@ -189,7 +232,7 @@ public class PaymentTests {
 	
 
 	
-	public static void runSimpleTest() {
+	public static void runSimpleTestAll() {
 		Network net = new ReadableFile("DS", "DS", "data/simple/simple2_graph.txt", null);
 		DistanceFunction hop = new HopDistance();
 		DistanceFunction speedy = new SpeedyMurmurs(2);
