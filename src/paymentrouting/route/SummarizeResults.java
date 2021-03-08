@@ -25,6 +25,15 @@ public class SummarizeResults {
 		}
 	}
 	
+	/**
+	 * summarizes the results of the attack evaluation 
+	 * writes a file where each column is an attack-routingAlgo combination whereas rows give the results 
+	 * for the number of trees corresponding to the row number
+	 * @param single: the metric of interest (e.g. SUCCESS)
+	 * @param name: variable part of name of output file (will be path + "attack" + name + ".txt")
+	 * 
+	 * Note: you need to have run Evaluation.attackEval() to use this summary function 
+	 */
 	public static void resAttacks(String single, String name) {
 		String[] attack = new String[]{"NON_COLLUDING_DROP_SPLITS", "COLLUDING_DROP_SPLITS"}; 
 		String[] attackName = new String[]{"non-coll", "coll"};
@@ -67,6 +76,18 @@ public class SummarizeResults {
 		}
 	}
 	
+	/**
+	 * summarizes the results of the timelock value evaluation  
+	 * writes a file for each splitting method such that the columns of the file are locktime values and 
+	 * the number of rows corresponds to the number of trees, i.e., (i,j) gives the result for i trees and j-th locktime value
+	 * the 5 locktime values are no limitations, minimal distance between sender and receiver(all trees), 
+	 * maximal distance between sender and receiver, network diamter, twice the network diameter   
+	 * 
+	 * @param single: the metric of interest (e.g. SUCCESS) 
+	 * @param name: variable part of name of output file (will be path+"locks"+splittingMethod+name+".txt")
+	 * 
+	 * Note: you need to have run Evaluation.locksEval() to use this summary function 
+	 */
 	public static void resLocks(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
@@ -124,7 +145,17 @@ public class SummarizeResults {
 		
 	}
 	
-	public static void resTopologyNew(String single, String name) {
+	/**
+	 * summarizes the results for different network topologies 
+	 * writes a file such that each row is one topology (barabasi-albert, erdos-renyi, lightning snapshot) 
+	 * and the columns correspond to routing algorithms   
+	 * 
+	 * @param single: the metric of interest (e.g. SUCCESS) 
+	 * @param name: variable part of name of output file (will be "data/topology/Topology" + name + ".txt")
+	 * 
+	 * Note: you need to have run Evaluation.topologyEval() to use this summary function 
+	 */
+	public static void resTopology(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
 		String[] dist = new String[] { "HOP_DISTANCE", "SPEEDYMURMURS_MULTI_5" };
@@ -136,7 +167,7 @@ public class SummarizeResults {
 
 		try {
 			BufferedWriter bw = new BufferedWriter(
-					new FileWriter("data/check-changes/Topology" + name + ".txt"));
+					new FileWriter("data/topology/Topology" + name + ".txt"));
 			String line = "#distri";
 			// get names
 			for (int d = 0; d < distances.length; d++) {
@@ -150,7 +181,7 @@ public class SummarizeResults {
 				// get results
 				for (int d = 0; d < distances.length; d++) {
 					for (int a = 0; a < algos.length; a++) {
-						double[] r = getSingleVar("data/check-changes/"
+						double[] r = getSingleVar("data/topology/"
 								+ path[i]+ "/ROUTE_PAYMENT-" + algos[a] + "-1-false-" + dist[d]
 								+ "-2147483647/_singles.txt", single);
 						line = line + "	" + r[0] + "	" + r[1];
@@ -169,51 +200,16 @@ public class SummarizeResults {
 		
 	}
 	
-	public static void resTopology(String single, String name) {
-		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
-		String[] algosName = { "No", "Dist", "IfN"};
-		String[] dist = new String[] { "HOP_DISTANCE", "SPEEDYMURMURS_MULTI_5" };
-		String[] distances = { "HOP", "INT-SM" };
-		String[] path = {"BARABASI_ALBERT-6329-5--LARGEST_WEAKLY_CONNECTED_COMPONENT--INIT_CAPACITIES-200.0-EXP--TRANSACTIONS-100.0-EXP-false-10000-false-true",
-				         "ERDOS_RENYI-6329-10.31-true--LARGEST_WEAKLY_CONNECTED_COMPONENT--INIT_CAPACITIES-200.0-EXP--TRANSACTIONS-100.0-EXP-false-10000-false-true",
-				         "READABLE_FILE_LIGHTNING-6329--INIT_CAPACITIES-200.0-EXP--TRANSACTIONS-100.0-EXP-false-10000-false-true"};
-		String[] graphName = {"BA", "ER", "LN"};
-
-		try {
-			BufferedWriter bw = new BufferedWriter(
-					new FileWriter(path+"Topology" + name + ".txt"));
-			String line = "#distri";
-			// get names
-			for (int d = 0; d < distances.length; d++) {
-				for (int a = 0; a < algos.length; a++) {
-					line = line + "	" + distances[d] + "-" + algosName[a];
-				}
-			}
-			bw.write(line);
-			for (int i = 0; i < path.length; i++) {
-				line = graphName[i];
-				// get results
-				for (int d = 0; d < distances.length; d++) {
-					for (int a = 0; a < algos.length; a++) {
-						double[] r = getSingleVar("data/lightning-nopadding/"
-								+ path[i]+ "/" + algos[a] + "-1-false-" + dist[d]
-								+ "/_singles.txt", single);
-						line = line + "	" + r[0] + "	" + r[1];
-					}
-				}
-				bw.newLine();
-				bw.write(line);
-
-			}
-			bw.flush();
-			bw.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-	
+	/**
+	 * summarizes the results for Lightning snapshot with different distributions for capacities and transaction values
+	 * writes a file such that rows are distribution-combinations (e.g., exp-normal for exponential capacities and normally distributed 
+	 * transaction values) and columns are routing algorithms 
+	 *   
+	 * @param single: the metric of interest (e.g. SUCCESS) 
+	 * @param name: variable part of name of output file (will be path+"capTransDistri" + name + ".txt")
+	 * 
+	 * Note: you need to have run Evaluation.evalValTrees() to use this summary function 
+	 */
 	public static void resCapTrans(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
@@ -258,6 +254,15 @@ public class SummarizeResults {
 		
 	}
 	
+	/**
+	 * summarizes the results for Lightning snapshot with regard to different average transaction values 
+	 * writes a file such that rows are transaction values and columns are routing algorithms 
+	 *   
+	 * @param single: the metric of interest (e.g. SUCCESS) 
+	 * @param name: variable part of name of output file (will be path+"vals" + name + ".txt")
+	 * 
+	 * Note: you need to have run Evaluation.evalValTrees() to use this summary function 
+	 */
 	public static void resVals(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
@@ -301,6 +306,15 @@ public class SummarizeResults {
 		
 	}
 	
+	/**
+	 * summarizes the results for Lightning snapshot with regard to different number of trees 
+	 * writes a file for each transaction value such that rows are number of trees and columns are routing algorithms 
+	 *   
+	 * @param single: the metric of interest (e.g. SUCCESS) 
+	 * @param name: variable part of name of output file (will be path+vals[i]+name+".txt")
+	 * 
+	 * Note: you need to have run Evaluation.evalValTrees() to use this summary function 
+	 */
 	public static void resTrees(String single, String name) {
 		String[] algos = new String[] {
 				"CLOSEST_NEIGHBOR",
@@ -373,77 +387,7 @@ public class SummarizeResults {
 		}
 	}
 	
-	public static void resOld() {
-		String[] algos = new String[] {
-				"CLOSEST_NEIGHBOR",
-				"SPLIT_IFNECESSARY",
-				"RANDOM_SPLIT",
-				"RANDOM_PROPORTIONAL_SPLIT"
-		}; 
-		String[] algosName = {"No Split", "Necessary", "Random", "Random Proportional"};
-		String[] dist = new String[] {
-				"HOP_DISTANCE",
-				"SPEEDYMURMURS_1",
-				"SPEEDYMURMURS_2",
-				"SPEEDYMURMURS_3",
-				"SPEEDYMURMURS_4",
-				"SPEEDYMURMURS_5",
-				"SPEEDYMURMURS_MULTI_2",
-				"SPEEDYMURMURS_MULTI_3",
-				"SPEEDYMURMURS_MULTI_4",
-				"SPEEDYMURMURS_MULTI_5"
-		}; 
-		String[] nets = (new File("data/merged/")).list();
-		Arrays.sort(nets); 
-		for (int i = 0; i < nets.length; i++) {
-			String[] parts =  nets[i].split("-");
-			String net = parts[0].replace("_", "-"); 
-			if (parts.length < 10) continue; 
-			String init;
-			String tr;
-			String val;
-			if (net.contentEquals("BARABASI-ALBERT")){
-				init = parts[6];
-				tr = parts[10];
-				val = parts[9];
-			} else {
-				init = parts[9];
-				tr = parts[13];
-				val = parts[12];
-			}
-			 
-			String nameAll = net + ", average transaction value " + val + ", init capacity distribution " + init +
-					", transaction value distribution " + tr;
-			String nameShort = net + "-" + val + "-" + init +
-					"-" + tr;
-			System.out.println("\\begin{table} "); 
-			System.out.println("\\begin{tabular}{|r|l|l|l|l|} ");
-			String line = " ";
-			for (int l = 0; l < algos.length; l++) {
-				line = line + " & " + algosName[l]; 
-			}
-			System.out.println(line + " \\\\");
-			for (int j = 0; j < dist.length; j++) {
-				line = dist[j].replace("_", "-");;
-				for (int l = 0; l < algos.length; l++) {
-					double[] res = getSingleVar("data/merged/" + nets[i]
-							+"/"+algos[l]+"-1-false-"+dist[j]+"/_singles.txt", "MES_AV_SUCC=");
-					if (res != null) {
-					    line = line + " & " + "$" + 
-					      String.format("%.4f", res[0]) + " \\pm " + String.format("%.5f", res[1]) + "$"; 
-					}  else {
-						line = line + " & "; 
-					}
-				}
-				System.out.println(line + " \\\\");
-			}
-			System.out.println("\\end{tabular}");
-			System.out.println("\\caption{"+nameAll+"} ");
-			System.out.println("\\label{tab:"+nameShort+"} ");
-			System.out.println("\\end{table}");
-			System.out.println("");
-		}
-	}
+
 	
 	
 	
