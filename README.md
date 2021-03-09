@@ -52,6 +52,7 @@ Within each of the routing algorithm subdirectionaries, there are files with res
 * ROUTE_PAYMENT_MES_AV_SUCC: average overhead of a payment in terms of number of messages when considering only successful payments 
 * ROUTE_PAYMENT_HOPS_AV: average path length (longest path for split payments)
 * ROUTE_PAYMENT_HOPS_AV_SUCC: average path length (longest path for split payments) when considering only successful payments 
+
 The first 4 of the 9 values are average, median, minimum, maximum of the x runs. The fifth value is the standard deviation. The last two values jointly form the confidence interval (by default for 95\% but can be changed to 99\%) 
 
 
