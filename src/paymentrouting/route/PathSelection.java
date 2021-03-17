@@ -1,10 +1,13 @@
 package paymentrouting.route;
 
 import java.util.Random;
-
 import gtna.graph.Graph;
-import treeembedding.credit.CreditLinks;
 
+
+/**
+ * blueprint for selecting the next hop and initializing routing info; implemented by splitting methods 
+ * (e.g., ClosestNeighbor, SplitClosest, SplitIfNecessary) 
+ */
 public abstract class PathSelection {
 	private String name;
 	public DistanceFunction dist;  

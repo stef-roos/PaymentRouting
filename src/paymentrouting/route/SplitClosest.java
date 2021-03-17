@@ -10,6 +10,11 @@ import gtna.graph.Graph;
 import gtna.graph.Node;
 import treeembedding.credit.CreditLinks;
 
+/**
+ * split using the nodes closest to destination 
+ * @author mephisto
+ *
+ */
 public class SplitClosest extends PathSelection {
 
 	public SplitClosest(DistanceFunction df) {
@@ -33,6 +38,7 @@ public class SplitClosest extends PathSelection {
 			Random rand, int reality) {
 		Node[] nodes = g.getNodes();
 		int[] out = nodes[cur].getOutgoingEdges();
+		//sum all capacities available for forwarding 
 		double sum = 0;
 		HashMap<Double, Vector<Integer>> dists = new HashMap<Double, Vector<Integer>>();
 		for (int k = 0; k < out.length; k++) {
@@ -49,9 +55,11 @@ public class SplitClosest extends PathSelection {
 			}
 		}
 		if (sum < curVal) {
+			//routing failed as combined capacity of neighbors is insufficient 
 			return null;
 		} else {
 			double[] partVal = new double[out.length];
+			//write and sort distances  
 			Iterator<Double> it = dists.keySet().iterator();
 			double[] vals = new double[dists.size()];
 			int c = 0;
@@ -61,15 +69,18 @@ public class SplitClosest extends PathSelection {
 			}
 			Arrays.sort(vals);
 			
-			double all = 0;
+			double all = 0; //funds already assigned to be forwarded 
 			for (int i = 0; i < vals.length; i++) {
+				//start with node(s) at least distance 
 				Vector<Integer> vec = dists.get(vals[i]);
 				while (vec.size() > 0) {
 					int node = vec.remove(rand.nextInt(vec.size()));
+					//forward all that still needs forwarding via this node if possible, otherwise: forward maximal value that can go via channel
 					double valNode = Math.min(rp.computePotential(cur, out[node]), curVal-all);
 					all = all + valNode;
 					partVal[node] = valNode;
 					if (all >= curVal) {
+						//stop if all funds are assigned for forwarding 
 						break;
 					}
 				}

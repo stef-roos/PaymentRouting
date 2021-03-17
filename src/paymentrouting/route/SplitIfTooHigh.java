@@ -9,6 +9,12 @@ import java.util.Vector;
 import gtna.graph.Graph;
 import gtna.graph.Node;
 
+/**
+ * split if too many funds are used by payment 
+ * NOT EVALUATED 
+ * @author mephisto
+ *
+ */
 public class SplitIfTooHigh extends SplitClosest {
 	double reserve;
 	double cur_reserve; 

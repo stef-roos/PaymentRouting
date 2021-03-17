@@ -8,6 +8,11 @@ import gtna.graph.Graph;
 import gtna.graph.Node;
 import paymentrouting.route.DistanceFunction.Timelock;
 
+/**
+ * distance = length of shortest path 
+ * @author mephisto
+ *
+ */
 
 public class HopDistance extends DistanceFunction {
 	int[][] distances;

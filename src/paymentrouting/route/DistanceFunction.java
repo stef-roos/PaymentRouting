@@ -4,14 +4,22 @@ import java.util.Random;
 
 import gtna.graph.Graph;
 
+/**
+ * blueprint for distance functions, implemented in HopDistance, SpeedyMurmurs, SpeedyMurmursMulti
+ * @author mephisto
+ *
+ */
 public abstract class DistanceFunction {
      String name;
-     public int realities;
-     int startR;
-     Timelock timelockmode;
-     int lock; 
+     public int realities; //number of dimensions (e.g., spanning trees)
+     int startR; //if multiple dimensions: which one is relevant (if only one) 
+     Timelock timelockmode; //how to treat timelocks
+     int lock; //value of the timelock if a constant
      
      public enum Timelock{
+    	 //CONST: global constant for timelock value
+    	 //MIN: minimal distance between sender and receiver (in all dimensions) 
+    	 //MAX: maximal distance between sender and receiver
  		CONST, MIN, MAX
  	}
      
@@ -37,11 +45,18 @@ public abstract class DistanceFunction {
     	 this.lock = lockval; 
      }
      
+     /**
+      * return timelock for a payment between src and dst based on timelockmode and val (if CONST) 
+      * @param src
+      * @param dst
+      * @return
+      */
      public int getTimeLock(int src, int dst) {
     	 switch (this.timelockmode) {
     	 case CONST: 
     		 return this.lock;
     	 case MIN:
+    		 //compute minimum
     		 int res = Integer.MAX_VALUE;
     		 for (int i = 0; i < this.realities; i++) {
     			 double d = this.distance(src, dst, i);
@@ -51,6 +66,7 @@ public abstract class DistanceFunction {
     		 }
     		 return res;
     	 case MAX: 
+    		 //compute maximum 
     		 res = 0;
     		 for (int i = 0; i < this.realities; i++) {
     			 double d = this.distance(src, dst, i);
