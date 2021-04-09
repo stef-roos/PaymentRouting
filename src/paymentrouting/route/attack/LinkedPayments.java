@@ -15,19 +15,17 @@ public class LinkedPayments extends AttackPathSelection {
 	                                                         //(characterized by nr, and time it has been hold,whether it should be failed) 
 	double fraction;
 	int delay; 
-	int delete; 
 	boolean colluding;
 	
 	int correctAttack;
 	int incorrectAttack;
 	int missedAttack;
 
-	public LinkedPayments(PathSelection select, double fraction, int delay, int d, boolean c) {
+	public LinkedPayments(PathSelection select, double fraction, int delay, boolean c) {
 		super("LINKED_PAYMENTS_"+fraction+"_"+delay+"_"+c, select);
 		this.fraction = fraction;
 		this.delay = delay; 
-		this.colluding = c;
-		this.delete = d; 
+		this.colluding = c; 
 				
 		this.caught = new HashMap<Integer, HashMap<Integer,HashMap<Integer,HashSet<int[]>>>>(); 
 	}
@@ -101,8 +99,9 @@ public class LinkedPayments extends AttackPathSelection {
 				    			//there is a tr that is a potential split -> drop both 
 				    			putonhold = false;
 				    			tr[2] = 1; //marks as dropped 
+				    			
 				    			//check whether it was a correct linking
-				    			if (tr[0] == rpc.curT.getNr()) {
+				    			if (tr[0] == data[0]) {
 				    				this.correctAttack++;
 				    			} else {
 				    				this.incorrectAttack++; 

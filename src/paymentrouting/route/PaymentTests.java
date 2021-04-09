@@ -1,7 +1,5 @@
 package paymentrouting.route;
 
-import java.util.HashSet;
-
 import gtna.data.Series;
 import gtna.metrics.Metric;
 import gtna.networks.Network;
@@ -16,7 +14,10 @@ import paymentrouting.datasets.InitCapacities.BalDist;
 import paymentrouting.datasets.Transactions;
 import paymentrouting.datasets.Transactions.TransDist;
 import paymentrouting.route.attack.ColludingDropSplits;
+import paymentrouting.route.attack.LinkabilitySuccess;
+import paymentrouting.route.attack.LinkedPayments;
 import paymentrouting.route.attack.NonColludingDropSplits;
+import paymentrouting.route.concurrency.RoutePaymentConcurrent;
 import paymentrouting.route.fee.AbsoluteDiffFee;
 import paymentrouting.route.fee.FeeComputation;
 import paymentrouting.route.fee.RatioDiffFee;
@@ -25,9 +26,7 @@ import paymentrouting.route.fee.RoutePaymentFees;
 public class PaymentTests {
 
 	public static void main(String[] args) {
-		HashSet<int[]> setTest = new HashSet<int[]>();
-		setTest.add(new int[] {1,2,3});
-		System.out.println(setTest.contains(new int[] {1,2,3})); 
+		testLinkAttack();
 	
 	}
 	
@@ -280,7 +279,21 @@ public class PaymentTests {
 	}
 	
 	
-
+   public static void  testLinkAttack() {
+	   Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
+	   Transformation[] trans = new Transformation[] {
+				new Transactions(1, TransDist.EXP, false, 100, 10000, false)};
+		Network net = new ReadableFile("DS", "DS", "data/simple/simpleNoTrans_graph.txt", trans);
+		DistanceFunction speedyMulti = new SpeedyMurmursMulti(2);
+		LinkedPayments linknoColl = new LinkedPayments(new SplitClosest(speedyMulti), 0.2, 3, false); 
+		LinkedPayments linkColl = new LinkedPayments(new SplitClosest(speedyMulti), 0.2, 3, true); 
+		Metric[] m = new Metric[] {new RoutePaymentConcurrent(linknoColl,1, 0.1),
+				                   new LinkabilitySuccess(linknoColl),
+				                   new RoutePaymentConcurrent(linkColl,1, 0.1),
+				                   new LinkabilitySuccess(linkColl)};
+		Series.generate(net, m, 10); 
+   }
 	
 	
 

@@ -244,7 +244,9 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	public void unlockAllUntil(double limit) {
 		ScheduledUnlock lock = this.qLocks.peek();
 		while (lock != null && lock.time <= limit) {
-			unlock(lock);
+			if (lock.edge.getSrc() != lock.edge.getDst()) {
+			    unlock(lock);
+			}
 			this.qLocks.poll();
 			lock = this.qLocks.peek(); 
 		}
@@ -310,7 +312,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		for (int j = vec.size()-2; j>= 0; j--) {
 			//schedule lock and increase timeout 
 			int s = vec.get(j);
-			if (!this.locked.containsKey(new Edge(s,t))) {
+			if (s != t && !this.locked.containsKey(new Edge(s,t))) {
 				System.out.println("Not contained in locks "+s + "," + t);
 				String path = "";
 				for (int i = 0; i < vec.size(); i++) {
