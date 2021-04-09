@@ -23,13 +23,14 @@ public class Transactions extends Transformation {
 	boolean onlyPossible; 
 	int rec;
 	int fl;
+	SourceReceiverPairs pair; 
 	
 	public Transactions(double expected, double var, TransDist d, boolean c, int n, double t,
-			boolean poss) {
+			boolean poss, SourceReceiverPairs srp) {
 		super("TRANSACTIONS", new Parameter[] {new DoubleParameter("EXPECTED", expected), 
 				new StringParameter("TRANS_DIST", d.name()), new BooleanParameter("CUTOFF", c),
 				new IntParameter("NUMBER", n), new DoubleParameter("TIME", t),
-				new BooleanParameter("ONLY_POSS", poss)}); 
+				new BooleanParameter("ONLY_POSS", poss), new StringParameter("PAIR_SELECTION", srp.name)}); 
 		this.td = d;
 		switch (this.td) {
 		case EXP: this.parameter= 1/expected; 
@@ -48,6 +49,17 @@ public class Transactions extends Transformation {
 		this.onlyPossible = poss;
 		this.rec = 0;
 		this.fl = 0;
+		this.pair = srp; 
+	}
+	
+	public Transactions(double expected, TransDist d, boolean c, int n, double t,
+			boolean poss, SourceReceiverPairs srp) {
+		this(expected, -1, d, c, n, t, poss, srp); 
+	}
+	
+	public Transactions(double expected, double var, TransDist d, boolean c, int n, double t,
+			boolean poss) {
+		this(expected, var, d, c, n, t, poss, new RandomPairs()); 
 	}
 	
 	public Transactions(double expected, double var, TransDist d, boolean c, int n, double t) {
@@ -150,13 +162,12 @@ public class Transactions extends Transformation {
 		    lambdaIA = 1/trsec; 
 		}
 		Transaction[] trs = new Transaction[number];
+		this.pair.setup(rand, g);
 		for (int i = 0; i < number; i++) {
 			//select source and destination randomly
-			int s = rand.nextInt(nodes);
-			int r = rand.nextInt(nodes);
-			while (r == s) {
-				r = rand.nextInt(nodes);
-			}
+			int[] p = this.pair.select(rand, g);
+			int s = p[0];
+			int r = p[1]; 
 			
 			double flow = Double.MAX_VALUE;
 			if (this.onlyPossible) {

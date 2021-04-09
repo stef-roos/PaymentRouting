@@ -11,6 +11,7 @@ import gtna.transformation.partition.LargestWeaklyConnectedComponent;
 import gtna.util.Config;
 import paymentrouting.datasets.InitCapacities;
 import paymentrouting.datasets.InitCapacities.BalDist;
+import paymentrouting.datasets.RandomPairs;
 import paymentrouting.datasets.Transactions;
 import paymentrouting.datasets.Transactions.TransDist;
 import paymentrouting.route.attack.ColludingDropSplits;
@@ -283,7 +284,7 @@ public class PaymentTests {
 	   Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 	   Transformation[] trans = new Transformation[] {
-				new Transactions(1, TransDist.EXP, false, 100, 10000, false)};
+				new Transactions(1, TransDist.EXP, false, 100, 10000, false, new RandomPairs())};
 		Network net = new ReadableFile("DS", "DS", "data/simple/simpleNoTrans_graph.txt", trans);
 		DistanceFunction speedyMulti = new SpeedyMurmursMulti(2);
 		LinkedPayments linknoColl = new LinkedPayments(new SplitClosest(speedyMulti), 0.2, 3, false); 
