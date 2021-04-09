@@ -22,6 +22,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	HashMap<Integer, Vector<PartialPath>> ongoingTr; 
 	HashMap<Edge, Double> locked; 
 	PriorityQueue<ScheduledUnlock> qLocks;
+	public ConcurrentTransaction curT;
 	
 	
 	
@@ -50,22 +51,22 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		 //loop until all transactions are processed 
 		 while (!qTr.isEmpty()) {
 		   //take a transaction, process all unlocks before, check if final or new (final for all paths = last node receiver or -1 indicating failure)
-		   ConcurrentTransaction cur = qTr.poll();
-		   curTime = cur.getTime(); 
+		   curT = qTr.poll();
+		   curTime = curT.getTime(); 
 		   this.unlockAllUntil(curTime);
-		   Vector<PartialPath> vec = this.ongoingTr.get(cur.getNr()); 
+		   Vector<PartialPath> vec = this.ongoingTr.get(curT.getNr()); 
 		   if (vec != null) {
-		      boolean[] state = this.checkFinal(vec, cur.getDst());
+		      boolean[] state = this.checkFinal(vec, curT.getDst());
 		      if (state[0]) {
 		    	  //done 
 		    	  //if final: schedule + compute stats 
 		    	  int[] stats = this.getStats(vec); 
-		    	  transStats(state[1],stats[0],stats[1],cur.getNr(),0); 
+		    	  transStats(state[1],stats[0],stats[1],curT.getNr(),0); 
 		    	  //schedule unlocks
 		    	  if (state[1]) {
 		    		  this.scheduleSuccessful(vec, curTime);
 		    	  } else {
-		    		  this.scheduleNotSuccessful(vec, curTime, cur.getDst(),stats[0]);
+		    		  this.scheduleNotSuccessful(vec, curTime, curT.getDst(),stats[0]);
 		    	  }
 		    	  continue; //go to next transaction 
 		      } else {
@@ -74,11 +75,11 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   } else {
 			   //add new transaction to ongoing 
 			   vec = new Vector<PartialPath>();
-			   double[] splitVal = this.splitRealities(cur.getVal(), select.getDist().getStartR(), rand);
+			   double[] splitVal = this.splitRealities(curT.getVal(), select.getDist().getStartR(), rand);
 		    	for (int a = 0; a < select.getDist().getStartR(); a++) {
-		    	     vec.add(new PartialPath(cur.getSrc(), splitVal[a],new Vector<Integer>(),a));
+		    	     vec.add(new PartialPath(curT.getSrc(), splitVal[a],new Vector<Integer>(),a));
 		        }
-			   ongoingTr.put(cur.getNr(),vec); 
+			   ongoingTr.put(curT.getNr(),vec); 
 		   }
 		    //if not final:  iterate over all non-final paths 
 		   Vector<PartialPath> next = new  Vector<PartialPath>();
@@ -87,7 +88,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			   PartialPath pp = vec.get(i);
                int curN = pp.node;
                //finished path -> no more steps
-               if (curN == -1 || curN == cur.getDst()) {
+               if (curN == -1 || curN == curT.getDst()) {
             	   next.add(pp);
             	   continue; 
                }
@@ -101,7 +102,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
            	   }
            	
            	   if (log) System.out.println("Routing at cur " + curN); 
-               double[] partVals = this.select.getNextsVals(g, curN, cur.getDst(), 
+               double[] partVals = this.select.getNextsVals(g, curN, curT.getDst(), 
                		pre, excluded, this, pp.val, rand, pp.reality); 
                for (int l = 0; l < past.size(); l++) {
            		excluded[past.get(l)] = false;
@@ -120,20 +121,20 @@ public class RoutePaymentConcurrent extends RoutePayment {
    							originalAll.put(e, w); 
    						}
    						this.lock(curN, out[k], partVals[k]); 
-               			if (out[k] != cur.getDst()) {
+               			if (out[k] != curT.getDst()) {
                				//more hops
                				next.add(new PartialPath(out[k], partVals[k], 
                						(Vector<Integer>)past.clone(),pp.reality));
                			} else {
                				//destination reached 
                				Vector<Integer> res = (Vector<Integer>)past.clone();
-               				res.add(cur.getDst()); 
+               				res.add(curT.getDst()); 
                				next.add(new PartialPath(out[k], partVals[k], 
                						res,pp.reality));
                			}
                			
                			if (log) {
-       		    			System.out.println("add link (" + cur + "," + out[k] + ") with val "+partVals[k]);
+       		    			System.out.println("add link (" + curT + "," + out[k] + ") with val "+partVals[k]);
        		    		}
                		} else {
                			zeros++;
@@ -154,9 +155,9 @@ public class RoutePaymentConcurrent extends RoutePayment {
                }
            } 
 		   //update entry in ongoingTr, add new next event in qTr
-		   cur.setTime(curTime + this.linklatency);
-		   ongoingTr.put(cur.getNr(),next);
-		   qTr.add(cur); 
+		   curT.setTime(curTime + this.linklatency);
+		   ongoingTr.put(curT.getNr(),next);
+		   qTr.add(curT); 
 		 }     
 	 }
 	 

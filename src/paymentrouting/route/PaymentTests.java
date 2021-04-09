@@ -1,5 +1,7 @@
 package paymentrouting.route;
 
+import java.util.HashSet;
+
 import gtna.data.Series;
 import gtna.metrics.Metric;
 import gtna.networks.Network;
@@ -23,7 +25,9 @@ import paymentrouting.route.fee.RoutePaymentFees;
 public class PaymentTests {
 
 	public static void main(String[] args) {
-		genDataSets();  
+		HashSet<int[]> setTest = new HashSet<int[]>();
+		setTest.add(new int[] {1,2,3});
+		System.out.println(setTest.contains(new int[] {1,2,3})); 
 	
 	}
 	
