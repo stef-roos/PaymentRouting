@@ -94,12 +94,15 @@ public class LinkedPayments extends AttackPathSelection {
 				    	Iterator<int[]> itTr = tx.iterator();
 				    	while (itTr.hasNext()) {
 				    		int[] tr = itTr.next();
+				    		//System.out.println("Found transaction with number " + tr[0] + "(observed at attackr"+ att +") at " + rpc.curT.getTime()+
+				    		//		" when observing transaction " + data[0] + " by attacker " + cur); 
 				    		//check whether transaction tr still on-hold
-				    		if (tr[1] < delay) {
+				    		if (tr[1] <= delay) {
+				    			//System.out.println("Still on hold transaction with number " + tr[0] + "(observed at attackr"+ att +") at " + rpc.curT.getTime()+ 
+				    				//	" when observing transaction " + data[0] + " by attacker " + cur);
 				    			//there is a tr that is a potential split -> drop both 
 				    			putonhold = false;
 				    			tr[2] = 1; //marks as dropped 
-				    			
 				    			//check whether it was a correct linking
 				    			if (tr[0] == data[0]) {
 				    				this.correctAttack++;
@@ -107,9 +110,14 @@ public class LinkedPayments extends AttackPathSelection {
 				    				this.incorrectAttack++; 
 				    			} 
 				    		} else {
+				    			
 				    			//transaction has already been forwarded, check if link was missed 
 				    			if (tr[0] == rpc.curT.getNr()) {
-				    				this.missedAttack++; 
+				    				//System.out.println("Missed " + tr[0] + " at " + rpc.curT.getTime()+
+						    		//		" when observing transaction " + data[0]); 
+				    				if (!excluded[att]) {
+				    					this.missedAttack++; 
+				    				}
 				    			}
 				    		}
 				    	}
@@ -135,24 +143,28 @@ public class LinkedPayments extends AttackPathSelection {
 			int[] data=null; 
 			while (it.hasNext()) {
 				int[] dat = it.next();
-				if (dat[0] == rpc.curT.getNr() && dat[1] < delay) {
+				if (dat[0] == rpc.curT.getNr() && dat[1] <= delay) {
 					data = dat;
 					break;
 				}
 			}
 			//check if it has been marked failed
-			if (data[2] == 1) {
-				return null;
-			} else {
-				//increment time payment has been delayed 
-				data[1]++;
-				if (data[1] == delay) {
-					//maximum reached: no more delaying -> normal beahvior
-					return this.sel.getNextsVals(g, cur, dst, pre, excluded, rp, curVal, rand, reality);
+			
+			//increment time payment has been delayed 
+			data[1]++;
+				if (data[1] > delay) {
+					//maximum reached: no more delaying -> dropping or normal behavior
+					if (data[2] == 1) {
+						//System.out.println("Failed from hold " + data[0] +" at time "+ rpc.curT.getTime());
+					   return null;
+					} else {	
+						//System.out.println("Release from hold " + data[0] +" at time "+ rpc.curT.getTime());
+					   return this.sel.getNextsVals(g, cur, dst, pre, excluded, rp, curVal, rand, reality);
+					}
 				} else {
 					return this.getResZero(g, cur); 
 				}
-			}
+			
 			
 			 
 		}

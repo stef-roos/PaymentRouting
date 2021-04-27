@@ -53,6 +53,9 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   //take a transaction, process all unlocks before, check if final or new (final for all paths = last node receiver or -1 indicating failure)
 		   curT = qTr.poll();
 		   curTime = curT.getTime(); 
+		   if (log) {
+			   System.out.println("Processing tx " + curT.getNr() + " at time " + curTime); 
+		   }
 		   this.unlockAllUntil(curTime);
 		   Vector<PartialPath> vec = this.ongoingTr.get(curT.getNr()); 
 		   if (vec != null) {
@@ -101,7 +104,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
            		    excluded[past.get(l)] = true;
            	   }
            	
-           	   if (log) System.out.println("Routing at cur " + curN); 
+           	   //if (log) System.out.println("Routing at cur " + curN); 
                double[] partVals = this.select.getNextsVals(g, curN, curT.getDst(), 
                		pre, excluded, this, pp.val, rand, pp.reality); 
                for (int l = 0; l < past.size(); l++) {

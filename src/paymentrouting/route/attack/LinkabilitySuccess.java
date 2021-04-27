@@ -10,13 +10,14 @@ import gtna.util.parameter.BooleanParameter;
 import gtna.util.parameter.DoubleParameter;
 import gtna.util.parameter.IntParameter;
 import gtna.util.parameter.Parameter;
+import gtna.util.parameter.StringParameter;
 
 public class LinkabilitySuccess extends Metric {
 	LinkedPayments linkpay;
 	
 	public LinkabilitySuccess(LinkedPayments l) {
 		super("LINKABILITY", new Parameter[]{new IntParameter("DELAY",l.delay), new BooleanParameter("COLLUSION", l.colluding),
-				new DoubleParameter("FRACTION",l.fraction)});
+				new DoubleParameter("FRACTION",l.fraction), new StringParameter("SPLITTING", l.sel.getName())});
 		this.linkpay = l;
 	}
 
@@ -36,7 +37,7 @@ public class LinkabilitySuccess extends Metric {
 	public Single[] getSingles() {
 		Single cor = new Single("CORRECT_ATTACK", this.linkpay.correctAttack);
 		Single incor = new Single("INCORRECT_ATTACK", this.linkpay.incorrectAttack);
-		Single missed = new Single("MISSED_ATTACK", this.linkpay.correctAttack);
+		Single missed = new Single("MISSED_ATTACK", this.linkpay.missedAttack);
 		return new Single[] {cor, incor,missed};
 	}
 
