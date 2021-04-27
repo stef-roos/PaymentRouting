@@ -10,7 +10,7 @@ public class FixedPairs extends SourceReceiverPairs {
 	boolean bidirectional;
 
 	public FixedPairs(boolean both) {
-		super("RANDOM_PAIRS");
+		super("FIXED_PAIRS");
 		this.bidirectional = both;
 	}
 
