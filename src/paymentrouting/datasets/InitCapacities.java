@@ -13,9 +13,9 @@ import gtna.util.parameter.StringParameter;
 import treeembedding.credit.CreditLinks;
 
 public class InitCapacities extends Transformation {
-	double parameter;
-	double variance;
-	BalDist bd;
+	double parameter; //first parameter defining distribution
+	double variance; //second parameter defining distribution, set to -1 if not needed
+	BalDist bd; // type of distribution (exp, constant, normal implemented) 
 	
 	public InitCapacities(double expected, double var, BalDist b) {
 		super("INIT_CAPACITIES", new Parameter[] {new DoubleParameter("EXPECTED", expected),

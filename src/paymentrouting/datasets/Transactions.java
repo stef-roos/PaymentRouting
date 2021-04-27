@@ -14,15 +14,15 @@ import treeembedding.credit.CreditLinks;
 import treeembedding.credit.Transaction;
 
 public class Transactions extends Transformation {
-	double parameter;
-	double variance; 
-	TransDist td;
-	boolean cutoff;
-	int number;
-	boolean time;
-	boolean onlyPossible; 
-	int rec;
-	int fl;
+	double parameter;//key parameter of distribution
+	double variance; //second parameter of distribution, just set to -1 if not needed
+	TransDist td; //type distributions for transactions (can be exp, constant, or normal) 
+	boolean cutoff;//cutoff a distribution; NOT USED
+	int number; // number of transactions 
+	boolean time; //should there be a time associated with a transaction? 
+	boolean onlyPossible; //limit to transaction that can be satisfied (makes no sense for non-static scenario) 
+	int rec; //number of recomputations needed if onlyPossible applied
+	int fl; //number of times value was set to maxFlow as no low enough value not found otherwise 
 	
 	public Transactions(double expected, double var, TransDist d, boolean c, int n, boolean t,
 			boolean poss) {
@@ -100,7 +100,7 @@ public class Transactions extends Transformation {
 				this.fl++; 
 			}
 			if (it == 1) {
-				//increse counter for recomputation 
+				//increase counter for recomputation 
 				this.rec++;
 			}
 		}
