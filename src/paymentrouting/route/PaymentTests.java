@@ -49,14 +49,15 @@ public class PaymentTests {
 				                   new RoutePayment(new RandomSplit(hop),trials,up), //random splitting, HopDistance 
 				                   new RoutePayment(new RandomSplit(speedyMulti),trials,up) //random splitting, Interdimensional SpeedyMurmurs
                                    }; 
-		Series.generate(net, m, 1); 
+		Series.generate(net, m, 3); 
 	}
 	
 	public static void runSimpleTestSynthetic() {
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
         //generate transformations to add i) capacities and ii) transactions 
 		Transformation[] trans = new Transformation[] { new InitCapacities(200, -1, BalDist.EXP), 
 				//exponentially distributed capacities with average value 200 (middle value is variance, which is not relevant for exponential)
-				new Transactions(20, -1, TransDist.EXP, false, 15, false, false) 
+				new Transactions(20, -1, TransDist.EXP, false, 15, true, false) 
 				// 15 transactions with expontially distributed values with average 20 (again -1 is variance, not needed for exp), 
 				//no cutoff, no concrete timestamp, no restriction to transactions guaranteed to be successful 
 		        };
@@ -80,7 +81,7 @@ public class PaymentTests {
 																			// SpeedyMurmurs
 		};
 		//run 
-		Series.generate(net, m, 1);
+		Series.generate(net, m, 10);
    }
 
 	
