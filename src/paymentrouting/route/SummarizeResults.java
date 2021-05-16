@@ -12,7 +12,8 @@ public class SummarizeResults {
 	public static String path = "";
 	
 	public static void main(String[] args) {
-        dynConcurrent("SUCCESS="); 
+		System.out.println(1280/1.5); 
+        //dynConcurrent("SUCCESS="); 
 //		String[][] singles = {{"SUCCESS=", "succ"},
 //				              {"MES_AV=", "mes"},
 //		                      {"MES_AV_SUCC=", "mesSucc"}};
@@ -479,7 +480,7 @@ public class SummarizeResults {
 		//System.out.println(file); 
 		double[] res = null;
 		try { 
-		    BufferedReader br = new BufferedReader(new FileReader(file));
+			BufferedReader br = new BufferedReader(new FileReader(file));
 		    String line;
 		    while ((line = br.readLine()) != null) {
 		    	if (line.contains(single)) {
@@ -491,7 +492,7 @@ public class SummarizeResults {
 		    }
 		    br.close();
 		} catch (IOException e) {
-			
+			e.printStackTrace();
 		}
 		return res; 
 	}

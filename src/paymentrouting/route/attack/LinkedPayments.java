@@ -20,6 +20,7 @@ public class LinkedPayments extends AttackPathSelection {
 	int correctAttack;
 	int incorrectAttack;
 	int missedAttack;
+	int notrelated; 
 
 	public LinkedPayments(PathSelection select, double fraction, int delay, boolean c) {
 		super("LINKED_PAYMENTS_"+fraction+"_"+delay+"_"+c, select);
@@ -52,6 +53,7 @@ public class LinkedPayments extends AttackPathSelection {
 		this.correctAttack = 0;
 		this.incorrectAttack = 0;
 		this.missedAttack = 0;
+		this.notrelated = 0; 
 		
 	}
 
@@ -117,7 +119,11 @@ public class LinkedPayments extends AttackPathSelection {
 						    		//		" when observing transaction " + data[0]); 
 				    				if (!excluded[att]) {
 				    					this.missedAttack++; 
+				    				} else {
+				    					this.notrelated++;
 				    				}
+				    			} else {
+				    				this.notrelated++;
 				    			}
 				    		}
 				    	}
