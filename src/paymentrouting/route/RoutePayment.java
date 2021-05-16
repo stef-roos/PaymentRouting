@@ -474,7 +474,7 @@ public class RoutePayment extends Metric{
 	 * @return
 	 */
 	public double getTotalCapacity(int s, int t) {
-		return this.edgeweights.getPot(s, t); 
+		return this.edgeweights.getTotalCapacity(s, t); 
 	}
     
 }

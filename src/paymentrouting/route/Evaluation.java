@@ -81,7 +81,7 @@ public class Evaluation {
 	}
 	
 	/**
-	 * evaluation with dynamic adjustments of weights (general setup), Figure 6 in paper  
+	 * evaluation with dynamic adjustments of weights (general setup), Figure 8 in paper  
 	 */
 	public static void dynamicEval() {
 		//storage setup
