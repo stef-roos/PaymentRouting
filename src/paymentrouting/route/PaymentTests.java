@@ -1,32 +1,25 @@
 package paymentrouting.route;
 
+import java.util.Random;
+
 import gtna.data.Series;
 import gtna.metrics.Metric;
 import gtna.networks.Network;
 import gtna.networks.model.BarabasiAlbert;
-import gtna.networks.model.ErdosRenyi;
 import gtna.networks.util.ReadableFile;
 import gtna.transformation.Transformation;
-import gtna.transformation.partition.LargestWeaklyConnectedComponent;
 import gtna.util.Config;
 import paymentrouting.datasets.InitCapacities;
 import paymentrouting.datasets.InitCapacities.BalDist;
 import paymentrouting.datasets.Transactions;
 import paymentrouting.datasets.Transactions.TransDist;
-import paymentrouting.route.attack.ColludingDropSplits;
-import paymentrouting.route.attack.NonColludingDropSplits;
-import paymentrouting.route.fee.AbsoluteDiffFee;
-import paymentrouting.route.fee.FeeComputation;
-import paymentrouting.route.fee.LightningFees;
-import paymentrouting.route.fee.RatioDiffFee;
-import paymentrouting.route.fee.RoutePaymentFees;
 
 public class PaymentTests {
 
 	public static void main(String[] args) {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);//run even if results already exist 
-		runSimpleTestSynthetic(); 
-	
+		//runSimpleTestSynthetic(); 
+	    System.out.println(1524000/(1000*60)); 
 	}
 	
 	/**
