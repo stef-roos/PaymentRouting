@@ -127,11 +127,11 @@ public class Evaluation {
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/con-lightning/");
 		int init = 200; 
 		int[] trval = {100, 25};
-		int runs = 10;
-		int trs = 1000000;
+		int runs = 20;
+		int trs = 100000;
 		int[] trees = {5}; 
 		double[] lat = {0.1};
-		double[] trh = {100}; 
+		double[] trh = {0.1, 2, 100}; 
 		TransDist td = TransDist.EXP;
 		BalDist bd = BalDist.EXP;
 		String file  = "lightning/lngraph_2020_03_01__04_00.graph";

@@ -12,7 +12,7 @@ public class SummarizeResults {
 	public static String path = "";
 	
 	public static void main(String[] args) {
-        dynConcurrent("SUCCESS="); 
+        dynConcurrent("ROUTE_PAYMENT_SUCCESS="); 
 //		String[][] singles = {{"SUCCESS=", "succ"},
 //				              {"MES_AV=", "mes"},
 //		                      {"MES_AV_SUCC=", "mesSucc"}};
@@ -27,7 +27,7 @@ public class SummarizeResults {
 	
 	public static void dynConcurrent(String single) {
 		String[] vals = {"25.0", "100.0"};
-		String[] rates = {"0.1", "0.5", "1.0", "2.0"};
+		String[] rates = {"0.1", "2.0", "100.0"};
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] dist = new String[] {
 				"HOP_DISTANCE",
@@ -40,7 +40,7 @@ public class SummarizeResults {
 					for (int m = 0; m < algos.length; m++) {
 						double[] res = getSingleVar("data/con-lightning/"
 								+ "READABLE_FILE_LIGHTNING-6329--INIT_CAPACITIES-200.0-EXP--"
-								+ "TRANSACTIONS-"+vals[j]+"-EXP-false-1000000-"+rates[r]+"-false/"
+								+ "TRANSACTIONS-"+vals[j]+"-EXP-false-100000-"+rates[r]+"-false/"
 								+ "ROUTE_PAYMENT-1-true-"+dist[k]+"-"+algos[m]+"-2147483647-0.1"
 								+ "/_singles.txt",
 								single); 
@@ -491,7 +491,7 @@ public class SummarizeResults {
 		    }
 		    br.close();
 		} catch (IOException e) {
-			
+			e.printStackTrace();
 		}
 		return res; 
 	}

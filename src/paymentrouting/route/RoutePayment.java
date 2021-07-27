@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Vector;
@@ -53,6 +54,9 @@ public class RoutePayment extends Metric{
 	long[] mes;
 	long[] mesSucc;
 	protected HashMap<Edge, Double> originalAll;
+	double[] slidingSuccess;
+	int window = 500; 
+	boolean[] windowRes;
 	
 	public RoutePayment(PathSelection ps, int trials, boolean up) {
 		this(ps,trials,up,Integer.MAX_VALUE); 
@@ -241,6 +245,7 @@ public class RoutePayment extends Metric{
 		succ &= DataWriter.writeWithIndex(this.trysDistribution.getDistribution(),
 				this.key+"_TRYS", folder);
 		succ &= DataWriter.writeWithIndex(this.succTime, this.key+"_SUCCESS_TEMPORAL", folder);
+		succ &= DataWriter.writeWithIndex(this.slidingSuccess, this.key+"_SUCCESS_SLIDING", folder);
 		
 		return succ;
 	}
@@ -393,6 +398,8 @@ public class RoutePayment extends Metric{
 		} else {
 			this.succTime = new double[len+1];
 		}
+		 this.slidingSuccess = new double[this.transactions.length-this.window+1];
+		 this.windowRes = new boolean[transactions.length]; 
 	}
 	
 	
@@ -413,10 +420,32 @@ public class RoutePayment extends Metric{
 				this.avMessSucc = this.messageDistributionSucc.getAverage();
 				this.success = this.success/this.transactions.length;
 				this.successFirst = this.successFirst/this.transactions.length;
+				for (int i = 0; i < this.succTime.length-1; i++) {
+					this.succTime[i] = this.succTime[i]/(double)this.tInterval;
+				}
 				int rest = this.transactions.length % this.tInterval;
 				if (rest > 0) {
-				   this.succTime[this.succTime.length-1] = this.succTime[this.succTime.length-1]/rest;
+				   this.succTime[this.succTime.length-1] = this.succTime[this.succTime.length-1]/(double)rest;
+				} else {
+					this.succTime[this.succTime.length-1] = this.succTime[this.succTime.length-1]/(double)this.tInterval;	
 				}
+				int windowS = 0; 
+				for (int i = 0; i < this.window; i++) {
+					if (this.windowRes[i]) {
+						windowS++;
+					} 
+				}
+				for (int i = 0; i < this.slidingSuccess.length-1; i++) {
+					this.slidingSuccess[i] = windowS/(double)this.window;
+					if (this.windowRes[i]) {
+						windowS--;
+					}	
+                    if (this.windowRes[i+this.window]) {
+						windowS++;
+					}
+				}
+				this.slidingSuccess[this.slidingSuccess.length-1] = windowS/(double)this.window;
+				
 				//reset weights for further metrics using them 
 				if (this.update) {
 					this.weightUpdate(edgeweights, originalAll);
@@ -464,10 +493,9 @@ public class RoutePayment extends Metric{
     	}
     	path = inc(path, h);
     	mes = inc(mes,x);
-    	if ((i+1) % this.tInterval == 0) {
-    		this.succTime[slot] = this.succTime[slot]/this.tInterval;
-    		slot++;
-    	}
+    	
+    	//sliding window
+    	this.windowRes[i] = s; 
 	}
 	
 	

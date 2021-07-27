@@ -1,8 +1,8 @@
 package paymentrouting.route.concurrency;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
-import java.util.Set;
 import java.util.Vector;
 
 import gtna.graph.Edge;

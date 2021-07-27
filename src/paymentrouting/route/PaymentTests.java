@@ -1,6 +1,8 @@
 package paymentrouting.route;
 
 import gtna.data.Series;
+import gtna.graph.Graph;
+import gtna.io.graphWriter.GtnaGraphWriter;
 import gtna.metrics.Metric;
 import gtna.networks.Network;
 import gtna.networks.model.BarabasiAlbert;
@@ -19,11 +21,12 @@ import paymentrouting.route.fee.AbsoluteDiffFee;
 import paymentrouting.route.fee.FeeComputation;
 import paymentrouting.route.fee.RatioDiffFee;
 import paymentrouting.route.fee.RoutePaymentFees;
+import paymentrouting.util.LightningJsonReader;
 
 public class PaymentTests {
 
 	public static void main(String[] args) {
-		genDataSets();  
+		rewriteGraphWithCap("lightning/lngraph_2021_07_26__14_00.json", "lightning/lngraph_2021_07_26__14_00.graph"); 
 	
 	}
 	
@@ -276,7 +279,12 @@ public class PaymentTests {
 	}
 	
 	
-
+    public static void rewriteGraphWithCap(String file, String output) {
+    	LightningJsonReader read = new LightningJsonReader();
+    	Graph g = read.read(file);
+    	GtnaGraphWriter write = new GtnaGraphWriter();
+    	write.writeWithProperties(g, output); 
+    }
 	
 	
 
