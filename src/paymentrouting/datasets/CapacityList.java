@@ -12,9 +12,27 @@ import gtna.io.Filewriter;
 public class CapacityList extends GraphProperty {
 	HashMap<Edge,Integer> cap;
 	
+	public CapacityList() {
+		
+	}
+	
 	public CapacityList(HashMap<Edge,Integer> capacities) {
 		this.cap = capacities; 
 	}
+	
+	
+
+	public HashMap<Edge, Integer> getCap() {
+		return cap;
+	}
+
+
+
+	public void setCap(HashMap<Edge, Integer> cap) {
+		this.cap = cap;
+	}
+
+
 
 	@Override
 	public boolean write(String filename, String key) {

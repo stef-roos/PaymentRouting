@@ -74,7 +74,7 @@ public class LightningJsonReader extends GraphReader {
 	        }
 	        edgesG.fill();
 	        graph.setNodes(nodelist);
-	        graph.addProperty("CAPACITES", new CapacityList(cap));
+	        graph.addProperty("CAPACITIES", new CapacityList(cap));
 	        return graph; 
 	        
 	    } catch (IOException e) {
