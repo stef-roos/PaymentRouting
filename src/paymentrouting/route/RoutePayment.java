@@ -398,7 +398,8 @@ public class RoutePayment extends Metric{
 		} else {
 			this.succTime = new double[len+1];
 		}
-		 this.slidingSuccess = new double[this.transactions.length-this.window+1];
+		int win = Math.min(this.window, this.transactions.length); 
+		 this.slidingSuccess = new double[this.transactions.length-win+1];
 		 this.windowRes = new boolean[transactions.length]; 
 	}
 	
@@ -430,13 +431,14 @@ public class RoutePayment extends Metric{
 					this.succTime[this.succTime.length-1] = this.succTime[this.succTime.length-1]/(double)this.tInterval;	
 				}
 				int windowS = 0; 
-				for (int i = 0; i < this.window; i++) {
+				int win = Math.min(this.window, this.transactions.length);
+				for (int i = 0; i < win; i++) {
 					if (this.windowRes[i]) {
 						windowS++;
 					} 
 				}
 				for (int i = 0; i < this.slidingSuccess.length-1; i++) {
-					this.slidingSuccess[i] = windowS/(double)this.window;
+					this.slidingSuccess[i] = windowS/(double)win;
 					if (this.windowRes[i]) {
 						windowS--;
 					}	
@@ -444,7 +446,7 @@ public class RoutePayment extends Metric{
 						windowS++;
 					}
 				}
-				this.slidingSuccess[this.slidingSuccess.length-1] = windowS/(double)this.window;
+				this.slidingSuccess[this.slidingSuccess.length-1] = windowS/(double)win;
 				
 				//reset weights for further metrics using them 
 				if (this.update) {

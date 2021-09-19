@@ -3,13 +3,15 @@ package paymentrouting.sourcerouting;
 import java.util.HashMap;
 import java.util.Random;
 
+import gtna.graph.Edge;
 import gtna.graph.Graph;
+import paymentrouting.datasets.LNParams;
 import paymentrouting.route.DistanceFunction;
 import paymentrouting.route.PathSelection;
 import paymentrouting.route.RoutePayment;
 import paymentrouting.route.concurrency.RoutePaymentConcurrent;
-import paymentrouting.route.fee.BaseRateFee;
 import paymentrouting.route.fee.PathFee;
+import treeembedding.credit.CreditLinks;
 
 public abstract class SourceStep extends PathSelection {
 	
@@ -19,12 +21,12 @@ public abstract class SourceStep extends PathSelection {
 	}
 
 	HashMap<Integer, HashMap<Integer,Integer>> toroute; 
-	BaseRateFee fees; 
+	LNParams params; 
 
 	@Override
 	public void initRoutingInfo(Graph g, Random rand) {
 		toroute = new HashMap<Integer, HashMap<Integer,Integer>>(); 
-		this.fees = (BaseRateFee) g.getProperty("BASERATEFEE");
+		this.params = (LNParams) g.getProperty("LN_PARAMS");
 	}
 
 	@Override
@@ -33,7 +35,8 @@ public abstract class SourceStep extends PathSelection {
 		int trnr = ((RoutePaymentConcurrent)rp).getCurT();
 		if (pre ==  -1) {
 			//source determines paths
-			PathFee[] paths = this.calculateRoute(g, cur, dst, trnr, curVal, rand, reality);
+			PathFee[] paths = this.calculateRoute(rp, g, cur, dst, trnr, curVal, rand, reality, excluded);
+			if (paths == null) return null; 
 			//record path info
 			for (int j = 0; j< paths.length; j++) {
 				int[] p = paths[j].getPath();
@@ -52,9 +55,13 @@ public abstract class SourceStep extends PathSelection {
 			for (int j = 0; j< paths.length; j++) {
 				int[] p = paths[j].getPath();
 				int first = p[1];
+				double pot = rp.computePotential(cur, first); 
 			    for (int i = 0; i < out.length; i++) {
 				    if (out[i] == first) {
 				    	vals[i] = vals[i]+ paths[j].getTotal(); 
+				    	if (vals[i] > pot) { //check if capacity sufficient 
+				    		return null; //should only happen if concurrency 
+				    	}
 				    	break; 
 				    }
 				
@@ -65,8 +72,13 @@ public abstract class SourceStep extends PathSelection {
 			HashMap<Integer, Integer> txs = this.toroute.get(cur);
 			int succ = txs.get(trnr);
 			txs.remove(trnr); 
-			double[] f = this.fees.getFees(cur); 
-			double nval = (curVal - f[0])/(1+f[1]);
+			Edge e = new Edge(cur, succ);
+			double base = this.params.getBase(e);
+			double rate = this.params.getRate(e);
+			double nval = (curVal - base)/(1+rate);
+			if (rp.computePotential(cur, succ) < nval) {
+				return null; 
+			}
 			int[] out = g.getNodes()[cur].getOutgoingEdges();
 			double[] vals = new double[out.length]; 
 			for (int i = 0; i < out.length; i++) {
@@ -80,7 +92,7 @@ public abstract class SourceStep extends PathSelection {
 		
 	}
 	
-	public abstract PathFee[] calculateRoute(Graph g, int src, int dst, int nr, double val, Random rand, int reality);
+	public abstract PathFee[] calculateRoute(RoutePayment rp, Graph g, int src, int dst, int nr, double val, Random rand, int reality, boolean[] excluded);
 	
 
 }

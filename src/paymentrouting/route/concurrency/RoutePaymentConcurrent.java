@@ -1,7 +1,6 @@
 package paymentrouting.route.concurrency;
 
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Vector;
 
@@ -10,6 +9,7 @@ import gtna.graph.Graph;
 import gtna.graph.Node;
 import gtna.util.parameter.DoubleParameter;
 import gtna.util.parameter.Parameter;
+import paymentrouting.datasets.TransactionRecord;
 import paymentrouting.route.PartialPath;
 import paymentrouting.route.PathSelection;
 import paymentrouting.route.RoutePayment;
@@ -17,23 +17,36 @@ import treeembedding.credit.Transaction;
 
 public class RoutePaymentConcurrent extends RoutePayment {
 	double linklatency; //link latency in ms
-	double now = 0; 
-	PriorityQueue<ConcurrentTransaction> qTr; 
+	//double now = 0; 
+	int curT; 
+    PriorityQueue<ConcurrentTransaction> qTr; 
 	HashMap<Integer, Vector<PartialPath>> ongoingTr; 
 	HashMap<Edge, Double> locked; 
 	PriorityQueue<ScheduledUnlock> qLocks;
+	String rec; 
+	HashMap<Integer, HashMap<Integer,TransactionRecord>> records;
 	
 	
 	
+	
+	public RoutePaymentConcurrent(PathSelection ps, int trials, double latency, String recordFile) {
+		this(ps,trials,Integer.MAX_VALUE, latency, recordFile); 
+	}
+	
+
+	public RoutePaymentConcurrent(PathSelection ps, int trials, int epoch, double latency, String recordFile) {
+		super(ps, trials, true, epoch, new Parameter[]{new DoubleParameter("LINK_LATENCY", latency)});
+		this.linklatency = latency; 
+		this.rec = recordFile; 
+	}
 	
 	public RoutePaymentConcurrent(PathSelection ps, int trials, double latency) {
-		this(ps,trials,Integer.MAX_VALUE, latency); 
+		this(ps,trials,Integer.MAX_VALUE, latency, null); 
 	}
 	
 
 	public RoutePaymentConcurrent(PathSelection ps, int trials, int epoch, double latency) {
-		super(ps, trials, true, epoch, new Parameter[]{new DoubleParameter("LINK_LATENCY", latency)});
-		this.linklatency = latency; 
+		this(ps,trials, epoch, latency, null); 
 	}
 	
 	 public void run(Graph g) {
@@ -46,11 +59,15 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		 }
 		 double curTime = 0; 
 		 boolean[] excluded = new boolean[nodes.length]; 
+		 if (this.rec != null) {
+			 this.initRecording(nodes.length);
+		 }
 		 
 		 //loop until all transactions are processed 
 		 while (!qTr.isEmpty()) {
 		   //take a transaction, process all unlocks before, check if final or new (final for all paths = last node receiver or -1 indicating failure)
 		   ConcurrentTransaction cur = qTr.poll();
+		   this.curT = cur.getNr(); 
 		   curTime = cur.getTime(); 
 		   this.unlockAllUntil(curTime);
 		   Vector<PartialPath> vec = this.ongoingTr.get(cur.getNr()); 
@@ -101,12 +118,22 @@ public class RoutePaymentConcurrent extends RoutePayment {
            	   }
            	
            	   if (log) System.out.println("Routing at cur " + curN); 
-               double[] partVals = this.select.getNextsVals(g, curN, cur.getDst(), 
+               double[] partVals;
+               if (this.agree(curN, pp.val, curTime)) {
+                partVals = this.select.getNextsVals(g, curN, cur.getDst(), 
                		pre, excluded, this, pp.val, rand, pp.reality); 
+               } else {
+            	   partVals = new double[nodes[curN].getOutDegree()]; 
+               }
                for (int l = 0; l < past.size(); l++) {
            		excluded[past.get(l)] = false;
            	   }
                past.add(curN);
+               
+               //recording
+               if (this.rec != null) {
+            	   this.addInitRecord(nodes, curN, partVals, pp.val, pre, curTime);
+               }
 		       //if next hops found: get next hops and add to locked; add to originalAll if not in yet 
                if (partVals != null) {
                	int[] out = nodes[curN].getOutgoingEdges();
@@ -161,6 +188,19 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 }
 	 
 	 /**
+	  * allows curN to refuse to forward tx of value val at time curTime;
+	  * true for this class, can be implemented differently in subclass 
+	  * @param curN
+	  * @param val
+	  * @param curTime
+	  * @return
+	  */
+	 protected boolean agree(int curN, double val, double curTime) {
+		return true;
+	}
+
+
+	/**
 	  * add specific variables 
 	  */
 	 public void preprocess(Graph g) {
@@ -324,6 +364,8 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		}
 	}
 	
+	
+	
 	/**
 	 * check whether a routing is finished, if so check if it was successful
 	 * @param vec
@@ -371,5 +413,34 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	}
 	
 
+	public int getCurT() {
+		return curT;
+	}
+
+
+	public void setCurT(int curT) {
+		this.curT = curT;
+	}
+
+	protected void initRecording(int nodes) {
+		this.records = new HashMap<Integer,HashMap<Integer,TransactionRecord>>();
+		for (int i = 0; i < nodes; i++) {
+			this.records.put(i, new HashMap<Integer,TransactionRecord>()); 
+		}
+	}
+	
+	protected void addInitRecord(Node[] nodes, int node, double[] vals, double val, int pre, double time) {
+		HashMap<Integer,TransactionRecord> vec = this.records.get(node);
+		int[] out = nodes[node].getOutgoingEdges();
+		//find succ(s)
+		for (int i = 0; i < vals.length; i++) {
+			if (vals[i] > 0) {
+				int succ = out[i];
+				TransactionRecord r = new TransactionRecord(time, val, pre, succ);
+				vec.put(this.curT, r);
+			}
+		}
+	}
+	
 }
 

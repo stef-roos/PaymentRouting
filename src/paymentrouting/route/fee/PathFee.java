@@ -10,6 +10,7 @@ public class PathFee {
 		this.fee = f;
 		this.total = t;
 	}
+	
 
 	public int[] getPath() {
 		return path;
