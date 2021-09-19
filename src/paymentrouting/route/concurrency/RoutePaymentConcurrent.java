@@ -1,12 +1,16 @@
 package paymentrouting.route.concurrency;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Vector;
 
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import gtna.graph.Node;
+import gtna.io.Filewriter;
 import gtna.util.parameter.DoubleParameter;
 import gtna.util.parameter.Parameter;
 import paymentrouting.datasets.TransactionRecord;
@@ -131,7 +135,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
                past.add(curN);
                
                //recording
-               if (this.rec != null) {
+               if (this.rec != null && partVals != null) {
             	   this.addInitRecord(nodes, curN, partVals, pp.val, pre, curTime);
                }
 		       //if next hops found: get next hops and add to locked; add to originalAll if not in yet 
@@ -268,11 +272,16 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		}
 		this.locked.put(lock.edge, locked);
 		//update funds 
-	    if (lock.success) {	
+	    if (lock.success) {
 	       //successful payment -> permanently change potential in both directions 
 	    	edgeweights.setWeight(lock.edge.getSrc(),lock.edge.getDst(),lock.val);
 	    } else {
 	    	//failed payment -> no change 
+	    }
+	    
+	    //add record if file provided 
+	    if (this.records != null) {
+	    	this.finishRecord(lock, lock.time);
 	    }
 	}
 	
@@ -357,7 +366,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 				}
 				System.out.println("Path "+path);
 			}
-			ScheduledUnlock lock = new ScheduledUnlock(new Edge(s,t), step, succ, val); 
+			ScheduledUnlock lock = new ScheduledUnlock(new Edge(s,t), step, succ, val, this.curT); 
 			this.qLocks.add(lock); 
 			step = step + this.linklatency; 
 			t = s; 
@@ -440,6 +449,42 @@ public class RoutePaymentConcurrent extends RoutePayment {
 				vec.put(this.curT, r);
 			}
 		}
+	}
+	
+	protected void finishRecord(ScheduledUnlock lock, double time) {
+		int node = lock.edge.getSrc();
+		HashMap<Integer,TransactionRecord> record = this.records.get(node);
+		TransactionRecord tr = record.get(lock.nr);
+		tr.setEndT(time);
+		tr.setSuuccess(lock.success);
+		 
+		
+	}
+	
+	@Override
+	public void postprocess() {
+		super.postprocess();
+		if (this.rec != null) {
+			this.writeRecords();
+		}
+	}
+	
+	protected void writeRecords() {
+		
+			Filewriter fw = new Filewriter(this.rec);
+			int i = 0;
+			while (this.records.containsKey(i)) {
+				HashMap<Integer,TransactionRecord> record = this.records.get(i);
+				fw.writeln("node " + i);
+				Iterator<TransactionRecord> it = record.values().iterator();
+				while (it.hasNext()) {
+					TransactionRecord tr = it.next();
+					fw.writeln(tr.toString()); 
+				}
+				i++;
+			}
+			fw.close();
+		
 	}
 	
 }

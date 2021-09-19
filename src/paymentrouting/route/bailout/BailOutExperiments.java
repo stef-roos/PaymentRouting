@@ -19,7 +19,7 @@ public class BailOutExperiments {
 	public static void main(String[] args) {
 		//rewriteGraphWithCap("lightning/lngraph_2020_03_01__04_00.json", "lightning/lngraph_2020_03_01__04_00-cap.graph"); 
 		//stats("lightning/lngraph_2021_07_26__14_00.graph", "2021-snapshot.txt"); 
-		testLNDRouting(); 
+		testRecords(); 
 	}
 	
 	public static void rewriteGraphWithCap(String file, String output) {
@@ -44,6 +44,17 @@ public class BailOutExperiments {
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailout/");
 		Network net = new ReadableFile("LND", "LND", "./data/simple/simpleCon_graph.txt", new Transformation[] {new InitLNParams()});
 		RoutePaymentConcurrent pay = new RoutePaymentConcurrent(new LND(new HopDistance()),1,0.1);
+		Metric[] m = new Metric[] {pay};
+		Series.generate(net, m, 1); 
+		
+		
+	}
+	
+	public static void testRecords() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailout/");
+		Network net = new ReadableFile("LND", "LND", "./data/simple/simpleCon_graph.txt", new Transformation[] {new InitLNParams()});
+		RoutePaymentConcurrent pay = new RoutePaymentConcurrent(new LND(new HopDistance()),1,0.1, "data/bailout/record-test-LND4.txt");
 		Metric[] m = new Metric[] {pay};
 		Series.generate(net, m, 1); 
 		

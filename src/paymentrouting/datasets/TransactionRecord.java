@@ -63,9 +63,13 @@ public class TransactionRecord {
 		this.success = suuccess;
 	}
 	
+	public double getDuration() {
+		return this.endT - this.startT;
+	}
+	
 	@Override 
 	public String toString() {
-		return this.val + " " + this.pre + " " + this.succ + " " + this.startT + " " + this.endT + " " + this.success; 
+		return this.val + " " + this.pre + " " + this.succ + " " + this.startT + " " + this.endT + " "  + this.success; 
 	}
 
 }
