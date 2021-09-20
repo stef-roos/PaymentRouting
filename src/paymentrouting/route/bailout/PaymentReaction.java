@@ -1,22 +1,29 @@
 package paymentrouting.route.bailout;
 
+import java.util.Random;
+
+import gtna.graph.Edge;
+import gtna.graph.Graph;
+
 public abstract class PaymentReaction {
 	
 	public PaymentReaction() {
 		
 	}
 	
+	//init reactions, e.g., decide on adversary 
+	public abstract void init(Graph g, Random rand); 
+	
 	//accept a payment
-	public abstract boolean acceptLock(int node, double time, double val);
+	public abstract boolean acceptLock(Graph g, int node, double time, double val, Random rand);
 	
 	//forward hash on return; returns time until reaction, 0 for 'normal' peers  
-	public abstract double forwardHash(int node, double timenow, double timeLock);
+	public abstract double forwardHash(Graph g, Edge e, double timenow, Random rand);
 	
 	//resolve failed payment before timeout; time until reaction  
-	public abstract double resolve(int node, double timenow, double timeLock);
+	public abstract double resolve(Graph g, Edge e, double timenow, Random rand);
 	
-	//react as receiver
-	public abstract double reactReceiver(int node, double timenow, double timeLock);
+	public abstract boolean receiverReaction(int dst);
 	
 
 }

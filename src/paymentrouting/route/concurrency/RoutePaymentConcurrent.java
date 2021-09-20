@@ -20,7 +20,7 @@ import paymentrouting.route.RoutePayment;
 import treeembedding.credit.Transaction;
 
 public class RoutePaymentConcurrent extends RoutePayment {
-	double linklatency; //link latency in ms
+	protected double linklatency; //link latency in ms
 	//double now = 0; 
 	int curT; 
     PriorityQueue<ConcurrentTransaction> qTr; 
@@ -353,7 +353,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 * @param curTime
 	 */
 	public void schedulePath(Vector<Integer> vec, double curTime, double val, boolean succ) {
-		double step = curTime + this.linklatency; 
+		double step = curTime; 
 		int t = vec.get(vec.size()-1); 
 		for (int j = vec.size()-2; j>= 0; j--) {
 			//schedule lock and increase timeout 
@@ -366,11 +366,16 @@ public class RoutePaymentConcurrent extends RoutePayment {
 				}
 				System.out.println("Path "+path);
 			}
-			ScheduledUnlock lock = new ScheduledUnlock(new Edge(s,t), step, succ, val, this.curT); 
+			Edge e = new Edge(s,t); 
+			step = step + this.getTimeToUnlock(step, e, succ, val); 
+			ScheduledUnlock lock = new ScheduledUnlock(e, step, succ, val, this.curT); 
 			this.qLocks.add(lock); 
-			step = step + this.linklatency; 
 			t = s; 
 		}
+	}
+	
+	public double getTimeToUnlock(double timeBefore, Edge e, boolean succ, double val) {
+		return this.linklatency; 
 	}
 	
 	

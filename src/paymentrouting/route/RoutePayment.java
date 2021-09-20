@@ -57,6 +57,7 @@ public class RoutePayment extends Metric{
 	double[] slidingSuccess;
 	int window = 500; 
 	boolean[] windowRes;
+	protected Graph graph; 
 	
 	public RoutePayment(PathSelection ps, int trials, boolean up) {
 		this(ps,trials,up,Integer.MAX_VALUE); 
@@ -103,6 +104,7 @@ public class RoutePayment extends Metric{
 		//init values
 		this.preprocess(g);
 		Node[] nodes = g.getNodes();
+		this.graph = g; 
 		this.run(g); 
 		this.postprocess();	
 	}
