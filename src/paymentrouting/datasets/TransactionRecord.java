@@ -6,13 +6,19 @@ public class TransactionRecord {
 	double startT;
 	double endT;
 	double val;
+	double interval;
 	boolean success; 
 	
 	public TransactionRecord(double t, double val, int p, int s) {
+		this(t,val,p,s, -1); 
+	}
+	
+	public TransactionRecord(double t, double val, int p, int s, double inter) {
 		this.startT = t;
 		this.val = val; 
 		this.pre = p;
 		this.succ = s; 
+		this.interval = inter; 
 	}
 
 	public int getPre() {
@@ -65,6 +71,14 @@ public class TransactionRecord {
 	
 	public double getDuration() {
 		return this.endT - this.startT;
+	}
+	
+	public double getInterval() {
+		return interval;
+	}
+
+	public void setInterval(double interval) {
+		this.interval = interval;
 	}
 	
 	@Override 

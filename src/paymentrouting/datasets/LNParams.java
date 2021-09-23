@@ -115,5 +115,15 @@ public class LNParams extends GraphProperty {
     }
     return this;
   }
+  
+  public double computeFee(Edge e, double val) {
+	  double[] pars = this.params.get(e);
+	  return pars[0] + val*pars[1];
+  }
+  
+  public double getFeePart(Edge e, double val) {
+	  double[] pars = this.params.get(e);
+	  return (val-pars[0])/(1-pars[1]);
+  }
 
 }

@@ -363,6 +363,17 @@ public class RoutePayment extends Metric{
 	}
 	
 	/**
+	 * checks whether potential is enough for val 
+	 * @param s
+	 * @param t
+	 * @param val
+	 * @return
+	 */
+	public boolean isSufficientPot(int s, int t, double val, int pre) {
+		return (this.computePotential(s, t)>=val); 
+	}
+	
+	/**
 	 * return total capacity of a channel 
 	 * @param s
 	 * @param t

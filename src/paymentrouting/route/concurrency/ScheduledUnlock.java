@@ -17,6 +17,26 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 		this.nr = nr; 
 	}
 
+	public double getTime() {
+		return time;
+	}
+
+	public Edge getEdge() {
+		return edge;
+	}
+
+	public boolean isSuccess() {
+		return success;
+	}
+
+	public double getVal() {
+		return val;
+	}
+
+	public int getNr() {
+		return nr;
+	}
+
 	@Override
 	public int compareTo(ScheduledUnlock o) {
 		return (int) Math.signum(this.time-o.time);

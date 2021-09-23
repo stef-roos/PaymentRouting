@@ -23,10 +23,12 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	protected double linklatency; //link latency in ms
 	//double now = 0; 
 	int curT; 
-    PriorityQueue<ConcurrentTransaction> qTr; 
-	HashMap<Integer, Vector<PartialPath>> ongoingTr; 
-	HashMap<Edge, Double> locked; 
-	PriorityQueue<ScheduledUnlock> qLocks;
+    protected PriorityQueue<ConcurrentTransaction> qTr; 
+	protected HashMap<Integer, Vector<PartialPath>> ongoingTr; 
+	protected HashMap<Edge, Double> locked; 
+	protected PriorityQueue<ScheduledUnlock> qLocks;
+	protected double curTime; 
+	protected double timeAdded=0; 
 	String rec; 
 	HashMap<Integer, HashMap<Integer,TransactionRecord>> records;
 	
@@ -61,7 +63,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			 ConcurrentTransaction ct = new ConcurrentTransaction(i,t); 
 			 qTr.add(ct); 
 		 }
-		 double curTime = 0; 
+		 this.curTime = 0; 
 		 boolean[] excluded = new boolean[nodes.length]; 
 		 if (this.rec != null) {
 			 this.initRecording(nodes.length);
@@ -185,7 +187,8 @@ public class RoutePaymentConcurrent extends RoutePayment {
                }
            } 
 		   //update entry in ongoingTr, add new next event in qTr
-		   cur.setTime(curTime + this.linklatency);
+		   cur.setTime(curTime + this.linklatency+this.timeAdded);
+		   this.timeAdded = 0; 
 		   ongoingTr.put(cur.getNr(),next);
 		   qTr.add(cur); 
 		 }     
