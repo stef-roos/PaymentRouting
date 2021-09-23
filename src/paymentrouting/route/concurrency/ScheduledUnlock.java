@@ -9,12 +9,37 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 	double val; 
 	int nr;
 	
+	/**
+	 * constructor with unlock time known and success status known 
+	 * @param e
+	 * @param t
+	 * @param s
+	 * @param v
+	 * @param nr
+	 */
 	public ScheduledUnlock(Edge e, double t, boolean s, double v, int nr) {
 		this.time = t;
 		this.edge = e;
 		this.success = s;
 		this.val = v; 
 		this.nr = nr; 
+	}
+	
+	/**
+	 * constructor when unlock time and success not yet known 
+	 * @param e
+	 * @param v
+	 * @param nr
+	 */
+	public ScheduledUnlock(Edge e, double v, int nr) {
+		this.edge = e;
+		this.val = v; 
+		this.nr = nr; 
+	}
+	
+	public void finalize(double t, boolean s) {
+		this.time = t;
+		this.success = s;		
 	}
 
 	public double getTime() {

@@ -27,6 +27,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	protected HashMap<Integer, Vector<PartialPath>> ongoingTr; 
 	protected HashMap<Edge, Double> locked; 
 	protected PriorityQueue<ScheduledUnlock> qLocks;
+	protected HashMap<Integer,HashMap<Integer,ScheduledUnlock>> preScheduled;
 	protected double curTime; 
 	protected double timeAdded=0; 
 	String rec; 
@@ -152,7 +153,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
    						if (this.update && !originalAll.containsKey(e)) {
    							originalAll.put(e, w); 
    						}
-   						this.lock(curN, out[k], partVals[k]); 
+   						this.lock(curN, out[k], partVals[k], cur.nr); 
                			if (out[k] != cur.getDst()) {
                				//more hops
                				next.add(new PartialPath(out[k], partVals[k], 
@@ -216,6 +217,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		 this.ongoingTr = new HashMap<Integer, Vector<PartialPath>>(); 
 		 this.locked = new HashMap<Edge, Double>(); 
 		 this.qLocks = new PriorityQueue<ScheduledUnlock>();
+		 preScheduled = new HashMap<Integer,HashMap<Integer,ScheduledUnlock>>();
 	 }
 	 
 	
@@ -241,7 +243,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 * @param v
 	 * @return
 	 */
-	public boolean lock(int s, int t, double v) {
+	public boolean lock(int s, int t, double v, int nr) {
 		double max = this.computePotential(s, t);
 		if (max < v) {
 			System.out.println("s=" + s + " t="+t + " max="+max + " v="+v); 
@@ -256,6 +258,14 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		locked = locked + v;
 		if (log) System.out.println("Locked value " + v + "for s=" + s + " t=" + t); 
 		this.locked.put(e, locked);
+		
+		//add to hashmap 
+		HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(s);
+		if (map == null) {
+			map = new HashMap<Integer, ScheduledUnlock>();
+			this.preScheduled.put(s, map); 
+		}
+		map.put(nr, new ScheduledUnlock(new Edge(s,t), v, nr)); 
 		return true; 
 	}
 	
@@ -295,6 +305,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	public void unlockAllUntil(double limit) {
 		ScheduledUnlock lock = this.qLocks.peek();
 		while (lock != null && lock.time <= limit) {
+			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(lock.edge.getSrc());
+			if (map != null) {
+				map.remove(lock.nr);
+			}
 			unlock(lock);
 			this.qLocks.poll();
 			lock = this.qLocks.peek(); 
@@ -371,7 +385,17 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			}
 			Edge e = new Edge(s,t); 
 			step = step + this.getTimeToUnlock(step, e, succ, val); 
-			ScheduledUnlock lock = new ScheduledUnlock(e, step, succ, val, this.curT); 
+			//retrieve lock 
+			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(s);
+			ScheduledUnlock lock = null;
+			if (map != null) {
+				lock = map.get(this.curT);
+			}
+			if (lock != null) {
+				lock.finalize(step, succ);
+			} else {
+			    lock = new ScheduledUnlock(e, step, succ, val, this.curT); 
+			}    
 			this.qLocks.add(lock); 
 			t = s; 
 		}
