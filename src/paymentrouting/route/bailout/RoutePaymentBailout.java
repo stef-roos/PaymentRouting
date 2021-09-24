@@ -19,6 +19,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	BailoutFee feeStrategy; 
 	double feeFactor; 
 	double waitingTime; //time after locking when node considers bailout 
+	HashMap<Edge, Double> inBailout; //maps a edge to time until bailout completed; delay all other operation on edge  
 	
 	public enum BailoutFee{
 		NORMAL, FACTOR, EXPECTED  
@@ -85,8 +86,12 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		} else {
 			//change locks
 			//remove old ones 
+			lockPN.setSuccess(false);
+			lockNS.setSuccess(false);
 			this.qLocks.remove(lockPN); 
 			this.qLocks.remove(lockNS); 
+			this.unlock(lockPN); 
+			this.unlock(lockNS); 
 			//locks for new path
 			ScheduledUnlock lockPD = new ScheduledUnlock(new Edge(pre,bailout), lockPN.getTime(), lockPN.isSuccess(), val, lockPN.getNr()); 
 			ScheduledUnlock lockDS = new ScheduledUnlock(new Edge(bailout,succ), lockNS.getTime(), lockNS.isSuccess(), val, lockNS.getNr());
@@ -106,12 +111,23 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			this.qLocks.add(feeAD); 
 			this.qLocks.add(feeDC); 
 			this.qLocks.add(feeCB); 
+			this.timeAdded = this.timeAdded + 4*this.linklatency; //until resolved 
+			this.inBailout.put(new Edge(pre,node), this.curTime + this.timeAdded); 
+			this.inBailout.put(new Edge(node,succ), this.curTime + this.timeAdded); 
+			this.inBailout.put(new Edge(node, pre), this.curTime + this.timeAdded); 
+			this.inBailout.put(new Edge(succ,node), this.curTime + this.timeAdded); 
 			return true; 
 		}
 	}
 	
 	@Override 
 	public boolean isSufficientPot(int s, int t, double val, int pre) {
+		double limit1 = this.inBailout.get(new Edge(s,t));
+		double limit2 = this.inBailout.get(new Edge(t,s));
+		if (limit1 > this.curTime || limit2 > this.curTime) {
+			this.timeAdded = Math.max(limit1, limit2);
+			return true; 
+		}
 		boolean a = super.isSufficientPot(s, t, val, pre);
 		if (pre == -1) return a; //not a bailout try 
 		if (!a) { //check if bailout an option 
@@ -170,7 +186,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		switch (this.feeStrategy) {
 		case NORMAL: return this.params.computeFee(new Edge(bailout, succ), val); 
 		case FACTOR: return this.feeFactor*this.params.computeFee(new Edge(bailout, succ), val);
-		case EXPECTED: return this.doMCSimulation(pre, succ, bailout, val, true, timeout);
+		case EXPECTED: return this.estimateMCFee(pre, succ, bailout, val, true, timeout);
 		default: return Double.MAX_VALUE;
 		}
 	}

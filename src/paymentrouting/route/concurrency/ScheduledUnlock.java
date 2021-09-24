@@ -25,6 +25,10 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 		this.nr = nr; 
 	}
 	
+	public void setSuccess(boolean success) {
+		this.success = success;
+	}
+
 	/**
 	 * constructor when unlock time and success not yet known 
 	 * @param e

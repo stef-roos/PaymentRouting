@@ -143,6 +143,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
                }
 		       //if next hops found: get next hops and add to locked; add to originalAll if not in yet 
                if (partVals != null) {
+            	   if (this.timeAdded != 0) {
+            		   //we need to delay
+            		   partVals = new double[partVals.length];
+            	   }
                	int[] out = nodes[curN].getOutgoingEdges();
                	int zeros = 0; //delay -> stay at same node 
                	for (int k = 0; k < partVals.length; k++) {
