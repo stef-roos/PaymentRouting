@@ -2,12 +2,14 @@ package paymentrouting.route.bailout;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.Vector;
 
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import gtna.graph.Node;
 import paymentrouting.datasets.LNParams;
+import paymentrouting.datasets.TransactionRecord;
 import paymentrouting.route.PartialPath;
 import paymentrouting.route.PathSelection;
 import paymentrouting.route.concurrency.RoutePaymentConcurrent;
@@ -195,8 +197,58 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		
 	}
 	
-    private double doMCSimulation(int pre, int succ, int node, double val, double preStartPot, double preStartLocked, double succStartPot,
-    		double succStartLocked) {
+	private Vector<TransactionRecord> getRecordsEdge(int s, int t){
+		Vector<TransactionRecord> vec = new Vector<TransactionRecord>();
+		Iterator<TransactionRecord> it = this.records.get(s).values().iterator();
+		//check if transaction forwarded to t and if finished 
+		while (it.hasNext()) {
+			TransactionRecord record = it.next();
+			if (record.getSucc() == t && record.getEndT() != Double.MAX_VALUE && record.getInterval() != -1 ) {
+				vec.add(record);
+			}
+		}
+		return vec; 
+	}
+	
+	private double[] simScore(Vector<TransactionRecord> vec, int neighbor, double val, boolean before) {
+		double[] score = new double[vec.size()];
+		double sum = 0;
+		for (int i = 0; i < vec.size(); i++) {
+			TransactionRecord tr = vec.get(i); 
+			double valFac = Math.min(tr.getVal(), val)/Math.max(tr.getVal(), val); 
+			if (before) {
+				if (neighbor == tr.getPre()) {
+					valFac = valFac*2;
+				}
+			} else {
+				if (neighbor == tr.getSucc()) {
+					valFac = valFac*2;
+				}
+			}
+			score[i] = valFac;
+			sum = sum + score[i];
+		}
+		
+		for (int i = 0; i < score.length; i++) {
+			score[i] = score[i]/sum;
+		}
+		
+		return score; 
+	}
+	
+	private int selectProp(double[] probs, Random rand) {
+		double r = rand.nextDouble();
+		int i = 0;
+		double s = probs[0]; 
+		while (i < probs.length-1 && s < r) {
+			i++;
+			s = s + probs[i];
+		}
+		return i; 
+	}
+	
+    private double doMCSimulation(int pre, int succ, int node, double val, ScheduledUnlock lockP, ScheduledUnlock lockS, boolean remove,
+    		double maxTime) {
 		
 	}
 	

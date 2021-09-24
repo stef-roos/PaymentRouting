@@ -31,7 +31,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	protected double curTime; 
 	protected double timeAdded=0; 
 	String rec; 
-	HashMap<Integer, HashMap<Integer,TransactionRecord>> records;
+	protected HashMap<Integer, HashMap<Integer,TransactionRecord>> records;
 	
 	
 	

@@ -19,6 +19,7 @@ public class TransactionRecord {
 		this.pre = p;
 		this.succ = s; 
 		this.interval = inter; 
+		this.endT = Double.MAX_VALUE; 
 	}
 
 	public int getPre() {
