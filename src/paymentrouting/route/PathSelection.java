@@ -37,6 +37,14 @@ public abstract class PathSelection {
 	public void clear() {
 		
 	}
+	
+	public double maxLocktim(Graph g, int s, int t, int i) {
+		return Double.MAX_VALUE; 
+	}
+	
+	public double decreaseLock(Graph g, int i, int j) {
+		return 1; 
+	}
 
 	/**
 	 * decide on how to split curVal over neighbors based on distances and capacities

@@ -4,6 +4,7 @@ import gtna.graph.Edge;
 
 public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 	double time;
+	double maxTime;  
 	Edge edge; 
 	boolean success;
 	double val; 
@@ -35,10 +36,11 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 	 * @param v
 	 * @param nr
 	 */
-	public ScheduledUnlock(Edge e, double v, int nr) {
+	public ScheduledUnlock(Edge e, double v, int nr, double max) {
 		this.edge = e;
 		this.val = v; 
 		this.nr = nr; 
+		this.maxTime = max; 
 	}
 	
 	public void finalize(double t, boolean s) {

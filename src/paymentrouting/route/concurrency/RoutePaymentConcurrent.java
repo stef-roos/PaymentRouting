@@ -157,17 +157,32 @@ public class RoutePaymentConcurrent extends RoutePayment {
    						if (this.update && !originalAll.containsKey(e)) {
    							originalAll.put(e, w); 
    						}
-   						this.lock(curN, out[k], partVals[k], cur.nr); 
+   						double l = select.maxLocktim(g, cur.getSrc(), cur.getDst(), i);
+   						if (l == Double.MAX_VALUE) {
+   							l = pp.lock;
+   						}
+                        if (l != Double.MAX_VALUE) {
+                        	l = l - select.decreaseLock(g, curN, out[k]); 
+                        }
+   						this.lock(curN, out[k], partVals[k], cur.nr, l); 
                			if (out[k] != cur.getDst()) {
                				//more hops
-               				next.add(new PartialPath(out[k], partVals[k], 
-               						(Vector<Integer>)past.clone(),pp.reality));
+               				PartialPath pth = new PartialPath(out[k], partVals[k], 
+               						(Vector<Integer>)past.clone(),pp.reality);
+               				if (l != Double.MAX_VALUE) {
+               					pth.addLock(l);
+               				}
+               				next.add(pth);
                			} else {
                				//destination reached 
                				Vector<Integer> res = (Vector<Integer>)past.clone();
                				res.add(cur.getDst()); 
-               				next.add(new PartialPath(out[k], partVals[k], 
-               						res,pp.reality));
+               				PartialPath pth = new PartialPath(out[k], partVals[k], 
+               						res,pp.reality); 
+               				if (l != Double.MAX_VALUE) {
+               					pth.addLock(l);
+               				}
+               				next.add(pth);
                			}
                			
                			if (log) {
@@ -247,7 +262,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 * @param v
 	 * @return
 	 */
-	public boolean lock(int s, int t, double v, int nr) {
+	public boolean lock(int s, int t, double v, int nr, double lock) {
 		double max = this.computePotential(s, t);
 		if (max < v) {
 			System.out.println("s=" + s + " t="+t + " max="+max + " v="+v); 
@@ -269,7 +284,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			map = new HashMap<Integer, ScheduledUnlock>();
 			this.preScheduled.put(s, map); 
 		}
-		map.put(nr, new ScheduledUnlock(new Edge(s,t), v, nr)); 
+		map.put(nr, new ScheduledUnlock(new Edge(s,t), v, nr, lock)); 
 		return true; 
 	}
 	

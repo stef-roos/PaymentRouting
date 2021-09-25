@@ -22,6 +22,7 @@ public class Dijkstra {
 	    double[] minCost = new double[nodes.length];
 		int[] predeccessor = new int[nodes.length]; 
 		double[] fees = new double[nodes.length]; 
+		double[] locks = new double[nodes.length]; 
 		for (int j = 0; j < nodes.length; j++) {
 			minCost[j] = -1;
 		}
@@ -92,12 +93,13 @@ public class Dijkstra {
 						
 						predeccessor[neigh] = node; 
 						fees[neigh] = feeNeigh; 
+						locks[neigh] = locks[node] + par.getDelay(new Edge( neigh, node)); 
 					}
 				}
 			}
 		}
 		if (success) {
-			return new DijkstraResult(minCost, predeccessor,fees, src, dst, val);
+			return new DijkstraResult(minCost, predeccessor,fees, src, dst, val, locks[src]);
 		} else {
 			return null; 
 		}
@@ -111,14 +113,16 @@ class DijkstraResult{
 	private int[] pre;
 	private int src,dst;
 	private double val;
+	private double lock; 
 	
-	public DijkstraResult(double[] c, int[] p, double[] f, int src, int dst, double v) {
+	public DijkstraResult(double[] c, int[] p, double[] f, int src, int dst, double v, double l) {
 		this.costs = c;
 		this.pre = p;
 		this.fees = f;
 		this.src = src;
 		this.dst = dst;
 		this.val = v; 
+		this.lock = l; 
 	}
 	
 
@@ -162,7 +166,7 @@ class DijkstraResult{
 			i++;
 			p[i] = cur;
 		}
-		PathFee pfee = new PathFee(p,this.fees[src], this.fees[src]+val); 
+		PathFee pfee = new PathFee(p,this.fees[src], this.fees[src]+val, this.lock); 
 		return pfee; 
 	}
 }

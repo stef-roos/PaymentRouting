@@ -14,6 +14,7 @@ import paymentrouting.route.fee.PathFee;
 import treeembedding.credit.CreditLinks;
 
 public abstract class SourceStep extends PathSelection {
+	double[] locks; 
 	
 	
 	public SourceStep(String n, DistanceFunction d) {
@@ -38,8 +39,10 @@ public abstract class SourceStep extends PathSelection {
 			PathFee[] paths = this.calculateRoute(rp, g, cur, dst, trnr, curVal, rand, reality, excluded);
 			if (paths == null) return null; 
 			//record path info
+			this.locks = new double[paths.length]; 
 			for (int j = 0; j< paths.length; j++) {
 				int[] p = paths[j].getPath();
+				locks[j] = paths[j].getTotalLock(); 
 				for (int i = 1; i < p.length-1; i++) {
 					HashMap<Integer, Integer> nexts = toroute.get(p[i]);
 					if (nexts == null) {
@@ -69,6 +72,7 @@ public abstract class SourceStep extends PathSelection {
 			}
 			return vals;
 		} else {
+			locks = null; 
 			HashMap<Integer, Integer> txs = this.toroute.get(cur);
 			int succ = txs.get(trnr);
 			txs.remove(trnr); 
@@ -95,4 +99,15 @@ public abstract class SourceStep extends PathSelection {
 	public abstract PathFee[] calculateRoute(RoutePayment rp, Graph g, int src, int dst, int nr, double val, Random rand, int reality, boolean[] excluded);
 	
 
+	public double maxLocktime(Graph g, int s, int t, int i) {
+		if (locks != null) {
+		   return this.locks[i];
+		} else {
+			return Double.MAX_VALUE; 
+		}
+	}
+	
+	public double decreaseLock(Graph g, int i, int j) {
+		return this.params.getDelay(new Edge(i,j)); 
+	}
 }

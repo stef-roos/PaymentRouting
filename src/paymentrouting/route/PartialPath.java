@@ -15,12 +15,17 @@ public class PartialPath {
 		public double val;
 		public Vector<Integer> pre;
 		public int reality;
+		public double lock = Double.MAX_VALUE;
 		
 		public PartialPath(int n, double val2, Vector<Integer> p, int r) {
 			this.node = n;
 			this.val = val2;
 			this.pre = p;
 			this.reality = r;
+		}
+		
+		public void addLock(double l) {
+			this.lock = l; 
 		}
 	
 }

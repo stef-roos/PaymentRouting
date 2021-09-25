@@ -4,11 +4,16 @@ public class PathFee {
 	int[] path;
 	double fee;
 	double total;
+	double totalLock; 
 	
-	public PathFee(int[] p, double f, double t) {
+
+
+
+	public PathFee(int[] p, double f, double t, double l) {
 		this.path = p;
 		this.fee = f;
 		this.total = t;
+		this.totalLock = l; 
 	}
 	
 
@@ -36,5 +41,13 @@ public class PathFee {
 		this.total = total;
 	}
 	
+	public double getTotalLock() {
+		return totalLock;
+	}
+
+
+	public void setTotalLock(double totalLock) {
+		this.totalLock = totalLock;
+	}
 
 }
