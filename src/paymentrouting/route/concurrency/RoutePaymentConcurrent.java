@@ -28,10 +28,12 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	protected HashMap<Edge, Double> locked; 
 	protected PriorityQueue<ScheduledUnlock> qLocks;
 	protected HashMap<Integer,HashMap<Integer,ScheduledUnlock>> preScheduled;
+	protected HashMap<Edge,Double> lastTime;
 	protected double curTime; 
 	protected double timeAdded=0; 
 	String rec; 
 	protected HashMap<Integer, HashMap<Integer,TransactionRecord>> records;
+	
 	
 	
 	
@@ -496,7 +498,15 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		for (int i = 0; i < vals.length; i++) {
 			if (vals[i] > 0) {
 				int succ = out[i];
-				TransactionRecord r = new TransactionRecord(time, val, pre, succ);
+				Edge e = new Edge(node, succ); 
+				Double last = this.lastTime.get(e);
+				TransactionRecord r;
+				if (last != null) {
+					r = new TransactionRecord(time, val, pre, succ, last);
+				} else {
+				    r = new TransactionRecord(time, val, pre, succ);
+				} 
+				this.lastTime.put(e, time); 
 				vec.put(this.curT, r);
 			}
 		}
