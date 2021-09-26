@@ -21,6 +21,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	LNParams params;
 	BailoutFee feeStrategy; 
 	double feeFactor; 
+	AcceptFee aFeeStrategy; 
+	double threshold; 
 	double waitingTime; //time after locking when node considers bailout 
 	HashMap<Edge, Double> inBailout; //maps a edge to time until bailout completed; delay all other operation on edge  
 	int itMC = 10;  
@@ -28,13 +30,19 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	public enum BailoutFee{
 		NORMAL, FACTOR, EXPECTED  
 	}
+	public enum AcceptFee{
+		ALWAYS, THRESHOLD, EXPECTED  
+	}
 
-	public RoutePaymentBailout(PathSelection ps, int trials, double latency, PaymentReaction react, BailoutFee feeS, double fac, double wait) {
+	public RoutePaymentBailout(PathSelection ps, int trials, double latency, PaymentReaction react, BailoutFee feeS, double fac, double wait,
+			AcceptFee a, double thres) {
 		super(ps, trials, latency);
 		this.react = react; 
 		this.feeStrategy = feeS; 
 		this.feeFactor = fac; 
 		this.waitingTime = wait; 
+		this.aFeeStrategy = a; 
+		this.threshold = thres; 
 	}
 	
 	@Override 
@@ -78,9 +86,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 				if (!this.checkPossible(pre, succ, i, valOut+fB+fC, valOut+fB+fC, node, fB+fA+fC, fB)) {
 					continue; 
 				}
-				double f = this.getFeeD(pre, succ, i, valOut+fB, lockNS.getTime() - this.curTime, curVal); //fee that neighbor charges 
+				double f = this.getFeeD(pre, succ, i, valOut+fB, lockNS.getMaxTime(), curVal); //fee that neighbor charges 
 				if (this.checkPossible(pre, succ, i, valOut+fB+f+fC, valOut+fB+fC, node, fB+fA+fC+f, fB)) { //check if possible with fee
-					if (f < minFee) {
+					if (f < minFee && this.acceptFee(f, pre, succ, node, val, lockNS.getMaxTime(), curVal)) {
 						minFee = f; 
 						bailout = i; 
 					}
@@ -336,22 +344,6 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
     	Edge eNP = new Edge(node, pre); 
     	Edge eSN = new Edge(node, succ);
     	Edge[] edges = {ePN, eNS, eNP, eSN}; 
-//		double prePot = this.computePotential(pre, node);
-//		double preLock = this.locked.get(ePre);
-//		double succPot = this.computePotential(node,succ);
-//		double succLock = this.locked.get(eSucc);
-//		if (remove) {
-//			prePot = prePot + lockP.getVal();
-//			preLock = preLock - lockP.getVal();
-//			succPot = succPot + lockS.getVal();
-//			succLock = succLock - lockS.getVal();			
-//		}
-//		if (add) {
-//			prePot = prePot - lockP.getVal();
-//			preLock = preLock + lockP.getVal();
-//			succPot = succPot - lockS.getVal();
-//			succLock = succLock + lockS.getVal();
-//		}
     	//pre-compute scores for selecting a transaction in simulation
         HashMap<Integer, double[]> mapPN = this.getAllSimScores(ePN, recPN);
         HashMap<Integer, double[]> mapNS = this.getAllSimScores(ePN, recNS);
@@ -449,6 +441,15 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
     		
     	}
     }
+    
+    private boolean acceptFee(double feeOffer,int pre, int succ, int node, double val, double timeout, double curVal) {
+		switch (this.aFeeStrategy) {
+		case ALWAYS: return true; 
+		case THRESHOLD: return (feeOffer <= this.threshold);
+		case EXPECTED: return (feeOffer <= this.estimateMCFee(pre, succ, node, val, false, timeout, curVal));
+		default: return false;
+		}
+	}
     
 	
 	public void preprocess(Graph g) {
