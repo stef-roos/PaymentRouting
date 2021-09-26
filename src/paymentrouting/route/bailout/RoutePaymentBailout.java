@@ -2,6 +2,7 @@ package paymentrouting.route.bailout;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Vector;
 
@@ -22,6 +23,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	double feeFactor; 
 	double waitingTime; //time after locking when node considers bailout 
 	HashMap<Edge, Double> inBailout; //maps a edge to time until bailout completed; delay all other operation on edge  
+	int itMC = 10;  
 	
 	public enum BailoutFee{
 		NORMAL, FACTOR, EXPECTED  
@@ -57,7 +59,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		return res; 
 	}
 	
-	private boolean bailout(int node, int pre, int succ, ScheduledUnlock lockPN, ScheduledUnlock lockNS) {
+	private boolean bailout(int node, int pre, int succ, ScheduledUnlock lockPN, ScheduledUnlock lockNS, double curVal) {
 		//compute fees
 		double valOut = lockNS.getVal(); 
 		double fB = this.params.computeFee(new Edge(node, succ), valOut);
@@ -72,8 +74,12 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		int[] neighPre = nodes[pre].getIncomingEdges();
 		for (int i: neighPre) {
 			if (nodes[succ].hasNeighbor(i)) { //shared neighbor 
-				double f = this.getFeeD(pre, succ, i, valOut+fB, lockNS.getTime() - this.curTime); //fee that neighbor charges 
-				if (this.checkPossible(pre, succ, i, valOut+fB+f+fC, valOut+fB+fC, node, fB+fA+fC+f, fB)) { //check if possible 
+				//check if possible without extra fees 
+				if (!this.checkPossible(pre, succ, i, valOut+fB+fC, valOut+fB+fC, node, fB+fA+fC, fB)) {
+					continue; 
+				}
+				double f = this.getFeeD(pre, succ, i, valOut+fB, lockNS.getTime() - this.curTime, curVal); //fee that neighbor charges 
+				if (this.checkPossible(pre, succ, i, valOut+fB+f+fC, valOut+fB+fC, node, fB+fA+fC+f, fB)) { //check if possible with fee
 					if (f < minFee) {
 						minFee = f; 
 						bailout = i; 
@@ -95,20 +101,20 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			this.unlock(lockPN); 
 			this.unlock(lockNS); 
 			//locks for new path
-			ScheduledUnlock lockPD = new ScheduledUnlock(new Edge(pre,bailout), lockPN.getTime(), lockPN.isSuccess(), val, lockPN.getNr()); 
-			ScheduledUnlock lockDS = new ScheduledUnlock(new Edge(bailout,succ), lockNS.getTime(), lockNS.isSuccess(), val, lockNS.getNr());
+			ScheduledUnlock lockPD = new ScheduledUnlock(this.curTime+4*this.linklatency, new Edge(pre,bailout), lockPN.getTime(), lockPN.isSuccess(), val, lockPN.getNr()); 
+			ScheduledUnlock lockDS = new ScheduledUnlock(this.curTime+5*this.linklatency, new Edge(bailout,succ), lockNS.getTime(), lockNS.isSuccess(), val, lockNS.getNr());
 			this.qLocks.add(lockPD);
 			this.qLocks.add(lockDS);
 			//locks for fees 
 			this.timeAdded = this.timeAdded + 6*this.linklatency; //6 for setting up (2 communication with D, 4 links to setup)
 			double step = this.curTime + this.timeAdded + this.linklatency; //immediately resolved 
-			ScheduledUnlock feeBA = new ScheduledUnlock(new Edge(node,pre), step, true, fB+fA+fC+minFee, lockPN.getNr());
+			ScheduledUnlock feeBA = new ScheduledUnlock(this.curTime+3*this.linklatency, new Edge(node,pre), step, true, fB+fA+fC+minFee, lockPN.getNr());
 			step = step + this.linklatency;
-			ScheduledUnlock feeAD = new ScheduledUnlock(new Edge(pre, bailout), step, true, fB+fC+minFee, lockPN.getNr());
+			ScheduledUnlock feeAD = new ScheduledUnlock(this.curTime+4*this.linklatency, new Edge(pre, bailout), step, true, fB+fC+minFee, lockPN.getNr());
 			step = step + this.linklatency;
-			ScheduledUnlock feeDC = new ScheduledUnlock(new Edge(bailout, succ), step, true, fB+fC, lockPN.getNr());
+			ScheduledUnlock feeDC = new ScheduledUnlock(this.curTime+5*this.linklatency, new Edge(bailout, succ), step, true, fB+fC, lockPN.getNr());
 			step = step + this.linklatency;
-			ScheduledUnlock feeCB = new ScheduledUnlock(new Edge(succ, node), step, true, fB, lockPN.getNr());
+			ScheduledUnlock feeCB = new ScheduledUnlock(this.curTime+6*this.linklatency, new Edge(succ, node), step, true, fB, lockPN.getNr());
 			this.qLocks.add(feeBA); 
 			this.qLocks.add(feeAD); 
 			this.qLocks.add(feeDC); 
@@ -142,7 +148,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 				for (int j = 0; j < locksEdge.size(); j++) {
 					ScheduledUnlock[] locks = locksEdge.get(j); 
 					if (locks[0] != null) { ///need way to determine
-						 this.bailout(s, pre, t, locks[0], locks[1]); 
+						 this.bailout(s, pre, t, locks[0], locks[1], val); 
 					}
 				}
 			}
@@ -184,17 +190,72 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		return works; 
 	}
 	
-	private double getFeeD(int pre, int succ, int bailout, double val, double timeout) {
+	private double getFeeD(int pre, int succ, int bailout, double val, double timeout, double curVal) {
 		switch (this.feeStrategy) {
 		case NORMAL: return this.params.computeFee(new Edge(bailout, succ), val); 
 		case FACTOR: return this.feeFactor*this.params.computeFee(new Edge(bailout, succ), val);
-		case EXPECTED: return this.estimateMCFee(pre, succ, bailout, val, true, timeout);
+		case EXPECTED: return this.feeFactor*this.estimateMCFee(pre, succ, bailout, val, true, timeout, curVal);
 		default: return Double.MAX_VALUE;
 		}
 	}
 	
-	private double estimateMCFee(int pre, int succ, int node, double val, boolean add, double timeout) {
+	private double estimateMCFee(int pre, int succ, int node, double val, boolean add, double timeout, double curVal) {
+		Vector<TransactionRecord> recPN = this.getRecordsEdge(pre, node);
+		Vector<TransactionRecord> recNS = this.getRecordsEdge(node, succ);
+		Vector<TransactionRecord> recNP = this.getRecordsEdge(node, pre);
+		Vector<TransactionRecord> recSN = this.getRecordsEdge(succ, node);
 		
+		//get funds 
+		double potPN = this.computePotential(pre, node); 
+		double potNS = this.computePotential(node, succ);
+		double potNP = this.computePotential(node, pre);
+		double potSN = this.computePotential(succ, node);
+//		if (!add) {
+//			//pre has already accepted current transaction, will be reset if not forwarded 
+//			potPN = potPN + curVal;
+//			potNP = potNP - curVal; 
+//		}
+		//adjust funds to different cases
+		//first value: less locked collateral
+		double feeNoLock; 
+		if (add) {
+			//case: D is asked to lock but has not, use current state  
+			feeNoLock = this.doMCSimulationFee(pre, succ, node, timeout, recPN, recNS, recNP, recSN, potPN, potNS, potNP, potSN, rand);
+		} else {
+			//case: B unlocks the value 
+			if (curVal <= potNS+val) {
+				//current payment will be forwarded
+				HashMap<Integer, ScheduledUnlock> locks = this.preScheduled.get(new Edge(node, succ)); 
+				if (locks == null) {
+					locks = new HashMap<Integer, ScheduledUnlock>();
+					this.preScheduled.put(new Edge(node, succ), locks);
+				}
+				ScheduledUnlock newLock = new ScheduledUnlock(this.curTime, new Edge(node, succ), val, this.getCurT(), timeout); 
+				locks.put(this.getCurT(), newLock); 
+			    feeNoLock = this.doMCSimulationFee(pre, succ, node, timeout, recPN, recNS, recNP, recSN, 
+					potPN+val+this.params.computeFee(new Edge(node,succ), val), potNS+val-curVal, potNP, potSN, rand);
+			    locks.remove(this.getCurT());			   
+			} else {
+				//current payment will be canceled 
+				double curValFee = this.params.computeFee(new Edge(node,succ), curVal);
+				feeNoLock = this.doMCSimulationFee(pre, succ, node, timeout, recPN, recNS, recNP, recSN, 
+						potPN+curVal-curValFee, potNS+val, potNP-curVal+
+						curValFee, potSN, rand);
+			}
+		}
+		//second value: include payment 
+		double feeLock;
+		if (add) {
+			//D locks the value; assumption: locked until max  
+			feeLock = this.doMCSimulationFee(pre, succ, node, timeout, recPN, recNS, recNP, recSN, potPN-val, potNS-val, potNP, potSN, rand);
+		} else {
+			//B keeps lock, current payment will be canceled 
+			double curValFee = this.params.computeFee(new Edge(node,succ), curVal);
+			feeLock = this.doMCSimulationFee(pre, succ, node, timeout, recPN, recNS, recNP, recSN, 
+					potPN+curVal-curValFee, potNS, potNP-curVal+
+					curValFee, potSN, rand);
+		}
+		return feeNoLock-feeLock; 
 	}
 	
 	private Vector<TransactionRecord> getRecordsEdge(int s, int t){
@@ -210,25 +271,31 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		return vec; 
 	}
 	
-	private double[] simScore(Vector<TransactionRecord> vec, int neighbor, double val, boolean before) {
+	private HashMap<Integer, double[]> getAllSimScores(Edge e, Vector<TransactionRecord> vec){
+		HashMap<Integer, double[]> map = new HashMap<Integer, double[]>(); 
+		Iterator<ScheduledUnlock> preSL = this.preScheduled.get(e).values().iterator();
+		while (preSL.hasNext()) {
+			ScheduledUnlock lock = preSL.next(); 
+			double[] scores = this.simScore(vec, lock.getVal(), this.curTime-lock.getStartTime()); 
+			map.put(lock.getNr(), scores);
+		}
+		return map; 
+	}
+	
+	private double[] simScore(Vector<TransactionRecord> vec, double val, double minDur) {
 		double[] score = new double[vec.size()];
 		double sum = 0;
 		for (int i = 0; i < vec.size(); i++) {
 			TransactionRecord tr = vec.get(i); 
+			if (tr.getDuration() < minDur) continue; 
 			double valFac = Math.min(tr.getVal(), val)/Math.max(tr.getVal(), val); 
-			if (before) {
-				if (neighbor == tr.getPre()) {
-					valFac = valFac*2;
-				}
-			} else {
-				if (neighbor == tr.getSucc()) {
-					valFac = valFac*2;
-				}
-			}
 			score[i] = valFac;
 			sum = sum + score[i];
 		}
 		
+		if (sum == 0) {
+			return null; 
+		}
 		for (int i = 0; i < score.length; i++) {
 			score[i] = score[i]/sum;
 		}
@@ -247,14 +314,183 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		return i; 
 	}
 	
-    private double doMCSimulation(int pre, int succ, int node, double val, ScheduledUnlock lockP, ScheduledUnlock lockS, boolean remove,
-    		double maxTime) {
-		
+	/**
+	 * estimate expected fees based on x runs 
+	 * @param pre
+	 * @param succ
+	 * @param node
+	 * @param val
+	 * @param lockP
+	 * @param lockS
+	 * @param remove
+	 * @param maxTime
+	 * @param recPre
+	 * @param recSucc
+	 * @return
+	 */
+    private double doMCSimulationFee(int pre, int succ, int node, double maxTime, 
+    		Vector<TransactionRecord> recPN, Vector<TransactionRecord> recNS, Vector<TransactionRecord> recNP, Vector<TransactionRecord> recSN,
+    		double potPN, double potNS, double potNP, double potSN, Random rand) {
+    	Edge ePN = new Edge(pre, node); 
+    	Edge eNS = new Edge(node, succ); 
+    	Edge eNP = new Edge(node, pre); 
+    	Edge eSN = new Edge(node, succ);
+    	Edge[] edges = {ePN, eNS, eNP, eSN}; 
+//		double prePot = this.computePotential(pre, node);
+//		double preLock = this.locked.get(ePre);
+//		double succPot = this.computePotential(node,succ);
+//		double succLock = this.locked.get(eSucc);
+//		if (remove) {
+//			prePot = prePot + lockP.getVal();
+//			preLock = preLock - lockP.getVal();
+//			succPot = succPot + lockS.getVal();
+//			succLock = succLock - lockS.getVal();			
+//		}
+//		if (add) {
+//			prePot = prePot - lockP.getVal();
+//			preLock = preLock + lockP.getVal();
+//			succPot = succPot - lockS.getVal();
+//			succLock = succLock + lockS.getVal();
+//		}
+    	//pre-compute scores for selecting a transaction in simulation
+        HashMap<Integer, double[]> mapPN = this.getAllSimScores(ePN, recPN);
+        HashMap<Integer, double[]> mapNS = this.getAllSimScores(ePN, recNS);
+        HashMap<Integer, double[]> mapNP = this.getAllSimScores(ePN, recNP);
+        HashMap<Integer, double[]> mapSN = this.getAllSimScores(ePN, recSN);
+		double feeAv = 0;
+		for (int i = 0; i < this.itMC; i++) {
+			double fRun = 0;
+			double potPNRun = potPN; 
+			double potNSRun = potNS;
+			double potNPRun = potNP; 
+			double potSNRun = potSN; 
+			double[] pots = {potPNRun, potNSRun, potNPRun, potSNRun}; 
+			//generate queue 
+			PriorityQueue<LockChange> changes = new PriorityQueue<LockChange>();
+			//add end times for locked tx 
+			this.addOngoingToPQ(changes, ePN, recPN, mapPN);
+			this.addOngoingToPQ(changes, eNS, recNS, mapNS);
+			this.addOngoingToPQ(changes, eNP, recNP, mapNP);
+			this.addOngoingToPQ(changes, eSN, recSN, mapSN);
+			this.addNewtoPQ(changes, ePN, recPN, maxTime, rand);
+			this.addNewtoPQ(changes, eNS, recNS, maxTime, rand);
+			this.addNewtoPQ(changes, eNP, recNP, maxTime, rand);
+			this.addNewtoPQ(changes, eSN, recSN, maxTime, rand);
+			//execute changes
+			double t = this.curTime; 
+			while (t < maxTime && !changes.isEmpty()) {
+				LockChange lc = changes.poll();
+				t = lc.time;
+				if (lc.lock) {
+					for (int j = 0; j < 4; j++) {
+					if (lc.edge.equals(edges[j])) {
+						if (lc.val <= pots[j]) {
+							//payment can be executed, hence value is locked  
+							pots[j] = pots[j] - lc.val;
+							//re-enter for unlock
+							lc.changetoUnlock();
+							changes.add(lc); 
+						}
+					}
+					}
+				} else {
+					for (int j = 0; j < 4; j++) {
+					if (lc.edge.equals(edges[j])) {
+						if (lc.success) {
+							//payment successful, value added to opposite direction
+							int index = (j+2)%4; 
+							pots[index] = pots[index] + lc.val; 
+							//if node is sending party, it receives fee
+							if (j==1 || j==2) {
+								fRun = fRun + this.params.computeFee(edges[j], lc.val);
+							}
+						} else {
+							//payment fails, return collateral 
+							pots[j] = pots[j] + lc.val;
+						}
+					}
+					}					
+				}
+			}
+			
+			
+			feeAv = feeAv + fRun; 
+		}
+		feeAv = feeAv/this.itMC;
+		return feeAv; 
 	}
+    
+    private void addOngoingToPQ(PriorityQueue<LockChange> changes, Edge e, Vector<TransactionRecord> vec,  HashMap<Integer, double[]> scores) {
+    	if (!this.preScheduled.containsKey(e)) return ; //no locks to take care of 
+    	Iterator<ScheduledUnlock> preSL = this.preScheduled.get(e).values().iterator();
+		while (preSL.hasNext()) {
+			ScheduledUnlock lock = preSL.next();
+			if (lock.getNr() == this.getCurT()) continue; //ongoing tx handled above 
+			double[] probs = scores.get(lock.getNr()); 
+			if (probs != null) {
+			   int trIndex = this.selectProp(probs, rand);
+			   TransactionRecord record = vec.get(trIndex);
+			   LockChange ch = new LockChange(lock.getTime() + record.getDuration(), lock.getVal(), e, false, record.isSuccess(),0); 
+               changes.add(ch); 
+			} else {
+				LockChange ch = new LockChange(lock.getMaxTime(), lock.getVal(), e, false, false,0); 
+	               changes.add(ch);
+			}
+		}
+    }
+    
+    private void addNewtoPQ(PriorityQueue<LockChange> changes, Edge e, Vector<TransactionRecord> vec, double timelimit, Random rand) {
+    	double t = this.curTime;
+    	while (t < timelimit) {
+    		TransactionRecord r = vec.get(rand.nextInt(vec.size()));
+    		t = t + r.getInterval(); 
+    		LockChange lockSt = new LockChange(t, r.getVal(), e, true, r.isSuccess(), r.getDuration());
+    		changes.add(lockSt); 
+    		
+    	}
+    }
+    
 	
 	public void preprocess(Graph g) {
 	     super.preprocess(g);
 	     this.params = (LNParams) (g.getProperty("LN_PARAMS"));
+	}
+	
+	private class LockChange implements Comparable<LockChange>{
+		double time;
+		double duration; 
+		double val;
+		Edge edge;
+		boolean lock; 
+		boolean success; 
+		
+		public LockChange(double t, double v, Edge e, boolean l, boolean s, double d) {
+			this.time = t;
+			this.val = v;
+			this.edge = e;
+			this.lock = l; 
+			this.success = s; 
+			this.duration = d; 
+		}
+		
+		public LockChange(double t, double v, Edge e, boolean l) {
+			this.time = t;
+			this.val = v;
+			this.edge = e;
+			this.lock = l; 
+			this.success = false; 
+		}
+		
+		private void changetoUnlock() {
+			this.time = this.time + this.duration;
+			this.lock = false; 
+		}
+
+		@Override
+		public int compareTo(LockChange o) {
+			return (int) Math.signum(this.time-o.time); 
+		}
+		
 	}
 
 }

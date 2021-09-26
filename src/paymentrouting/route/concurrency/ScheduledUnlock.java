@@ -3,6 +3,7 @@ package paymentrouting.route.concurrency;
 import gtna.graph.Edge;
 
 public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
+	double startTime; 
 	double time;
 	double maxTime;  
 	Edge edge; 
@@ -18,7 +19,8 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 	 * @param v
 	 * @param nr
 	 */
-	public ScheduledUnlock(Edge e, double t, boolean s, double v, int nr) {
+	public ScheduledUnlock(double st, Edge e, double t, boolean s, double v, int nr) {
+		this.startTime = st; 
 		this.time = t;
 		this.edge = e;
 		this.success = s;
@@ -26,6 +28,7 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 		this.nr = nr; 
 	}
 	
+
 	public void setSuccess(boolean success) {
 		this.success = success;
 	}
@@ -36,7 +39,8 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 	 * @param v
 	 * @param nr
 	 */
-	public ScheduledUnlock(Edge e, double v, int nr, double max) {
+	public ScheduledUnlock(double st, Edge e, double v, int nr, double max) {
+		this.startTime = st; 
 		this.edge = e;
 		this.val = v; 
 		this.nr = nr; 
@@ -50,6 +54,10 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 
 	public double getTime() {
 		return time;
+	}
+	
+	public double getMaxTime() {
+		return this.maxTime;
 	}
 
 	public Edge getEdge() {
@@ -66,6 +74,14 @@ public class ScheduledUnlock implements Comparable<ScheduledUnlock>{
 
 	public int getNr() {
 		return nr;
+	}
+	
+	public double getStartTime() {
+		return startTime;
+	}
+
+	public void setStartTime(double startTime) {
+		this.startTime = startTime;
 	}
 
 	@Override

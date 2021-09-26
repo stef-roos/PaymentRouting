@@ -27,7 +27,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	protected HashMap<Integer, Vector<PartialPath>> ongoingTr; 
 	protected HashMap<Edge, Double> locked; 
 	protected PriorityQueue<ScheduledUnlock> qLocks;
-	protected HashMap<Integer,HashMap<Integer,ScheduledUnlock>> preScheduled;
+	protected HashMap<Edge,HashMap<Integer,ScheduledUnlock>> preScheduled;
 	protected HashMap<Edge,Double> lastTime;
 	protected double curTime; 
 	protected double timeAdded=0; 
@@ -238,7 +238,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		 this.ongoingTr = new HashMap<Integer, Vector<PartialPath>>(); 
 		 this.locked = new HashMap<Edge, Double>(); 
 		 this.qLocks = new PriorityQueue<ScheduledUnlock>();
-		 preScheduled = new HashMap<Integer,HashMap<Integer,ScheduledUnlock>>();
+		 preScheduled = new HashMap<Edge,HashMap<Integer,ScheduledUnlock>>();
 	 }
 	 
 	
@@ -264,7 +264,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 * @param v
 	 * @return
 	 */
-	public boolean lock(int s, int t, double v, int nr, double lock) {
+	public boolean lock(int s, int t, double v, int nr, double maxlock) {
 		double max = this.computePotential(s, t);
 		if (max < v) {
 			System.out.println("s=" + s + " t="+t + " max="+max + " v="+v); 
@@ -284,9 +284,9 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(s);
 		if (map == null) {
 			map = new HashMap<Integer, ScheduledUnlock>();
-			this.preScheduled.put(s, map); 
+			this.preScheduled.put(new Edge(s,t), map); 
 		}
-		map.put(nr, new ScheduledUnlock(new Edge(s,t), v, nr, lock)); 
+		map.put(nr, new ScheduledUnlock(this.curTime, new Edge(s,t), v, nr, maxlock)); 
 		return true; 
 	}
 	
@@ -415,7 +415,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			if (lock != null) {
 				lock.finalize(step, succ);
 			} else {
-			    lock = new ScheduledUnlock(e, step, succ, val, this.curT); 
+			    lock = new ScheduledUnlock(this.curTime, e, step, succ, val, this.curT); 
 			}    
 			this.qLocks.add(lock); 
 			t = s; 
