@@ -280,10 +280,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		this.locked.put(e, locked);
 		
 		//add to hashmap 
-		HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(s);
+		HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(e);
 		if (map == null) {
 			map = new HashMap<Integer, ScheduledUnlock>();
-			this.preScheduled.put(new Edge(s,t), map); 
+			this.preScheduled.put(e, map); 
 		}
 		map.put(nr, new ScheduledUnlock(this.curTime, new Edge(s,t), v, nr, maxlock)); 
 		return true; 
@@ -325,7 +325,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	public void unlockAllUntil(double limit) {
 		ScheduledUnlock lock = this.qLocks.peek();
 		while (lock != null && lock.time <= limit) {
-			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(lock.edge.getSrc());
+			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(lock.edge);
 			if (map != null) {
 				map.remove(lock.nr);
 			}
@@ -406,7 +406,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			Edge e = new Edge(s,t); 
 			step = step + this.getTimeToUnlock(step, e, succ, val); 
 			//retrieve lock 
-			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(s);
+			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(e);
 			ScheduledUnlock lock = null;
 			if (map != null) {
 				lock = map.get(this.curT);
