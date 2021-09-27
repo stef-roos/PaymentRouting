@@ -6,6 +6,7 @@ import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Vector;
 
+import gtna.data.Single;
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import gtna.graph.Node;
@@ -26,6 +27,14 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	double waitingTime; //time after locking when node considers bailout 
 	HashMap<Edge, Double> inBailout; //maps a edge to time until bailout completed; delay all other operation on edge  
 	int itMC = 10;  
+	int bailouts; 
+	double[] feeGainedBailout; 
+	double feeMeanBail;
+	double feeMedianBail;
+	double feeMinBail;
+	double feeMaxBail; 
+	double feeQ1Bail;
+	double feeQ3Bail;
 	
 	public enum BailoutFee{
 		NORMAL, FACTOR, EXPECTED  
@@ -100,6 +109,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		if (bailout == -1) {
 			return false;
 		} else {
+			//update metrics for bailout 
+			bailouts++; 
+			this.feeGainedBailout[bailout] = this.feeGainedBailout[bailout] + minFee; 
 			//change locks
 			//remove old ones 
 			lockPN.setSuccess(false);
@@ -455,7 +467,50 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	public void preprocess(Graph g) {
 	     super.preprocess(g);
 	     this.params = (LNParams) (g.getProperty("LN_PARAMS"));
+	     this.bailouts = 0;
+	     this.feeGainedBailout = new double[g.getNodeCount()]; 
 	}
+	
+	@Override
+	public Single[] getSingles() {
+		Single[] singles = super.getSingles();
+		Single[] allSingle = new Single[singles.length+7];
+		for (int i = 0; i < singles.length; i++) {
+			allSingle[i] = singles[i]; 
+		}
+		
+		Single f1 = new Single(this.key + "_FEE_BAIL_AV", this.feeMeanBail);
+		Single f2 = new Single(this.key + "_FEE_BAIL_MED", this.feeMedianBail);
+		Single f3 = new Single(this.key + "_FEE_BAIL_Q1", this.feeQ1Bail);
+		Single f4 = new Single(this.key + "_FEE_BAIL_Q3", this.feeQ3Bail);
+		Single f5 = new Single(this.key + "_FEE_BAIL_MIN", this.feeMinBail);
+		Single f6 = new Single(this.key + "_FEE_BAIL_MAX", this.feeMaxBail);
+		Single b = new Single(this.key + "_BAILOUTS", this.bailouts);
+		int index = singles.length-1;
+		allSingle[index++] = f1; 
+		allSingle[index++] = f2; 
+		allSingle[index++] = f3; 
+		allSingle[index++] = f4; 
+		allSingle[index++] = f5; 
+		allSingle[index++] = f6;
+		allSingle[index++] = b; 
+
+		return allSingle; 
+	}
+	
+	@Override 
+	public void unlock(ScheduledUnlock lock) {
+		super.unlock(lock);
+		
+		//fee part
+	    int s = lock.getEdge().getSrc();
+	    if (this.transactions[lock.getNr()].getSrc() != s) { //source does not take fees 
+	    	double fee = this.params.computeFee(lock.getEdge(), lock.getVal()); 
+	    	this.feeGained[s] = this.feeGained[s] + fee; 
+	    }
+	}
+	
+	
 	
 	private class LockChange implements Comparable<LockChange>{
 		double time;

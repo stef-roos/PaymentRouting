@@ -316,7 +316,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	    if (this.records != null) {
 	    	this.finishRecord(lock, lock.time);
 	    }
+	    
 	}
+	
+	
 	
 	/**
 	 * unlocking all scheduled locks until time limit

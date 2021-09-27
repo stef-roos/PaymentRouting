@@ -58,6 +58,14 @@ public class RoutePayment extends Metric{
 	int window = 500; 
 	boolean[] windowRes;
 	protected Graph graph; 
+	protected double[] feeGained; 
+	double feeMean;
+	double feeMedian;
+	double feeMin;
+	double feeMax; 
+	double feeQ1;
+	double feeQ3; 
+	
 	
 	public RoutePayment(PathSelection ps, int trials, boolean up) {
 		this(ps,trials,up,Integer.MAX_VALUE); 
@@ -261,8 +269,15 @@ public class RoutePayment extends Metric{
 		
 		Single s1 = new Single(this.key + "_SUCCESS_DIRECT", this.successFirst);
 		Single s = new Single(this.key + "_SUCCESS", this.success);
+		
+		Single f1 = new Single(this.key + "_FEE_AV", this.feeMean);
+		Single f2 = new Single(this.key + "_FEE_MED", this.feeMedian);
+		Single f3 = new Single(this.key + "_FEE_Q1", this.feeQ1);
+		Single f4 = new Single(this.key + "_FEE_Q3", this.feeQ3);
+		Single f5 = new Single(this.key + "_FEE_MIN", this.feeMin);
+		Single f6 = new Single(this.key + "_FEE_MAX", this.feeMax);
 
-		return new Single[]{m_av, m_av_succ, h_av, h_av_succ, s1, s};
+		return new Single[]{m_av, m_av_succ, h_av, h_av_succ, s1, s, f1,  f2, f3, f4, f5, f6};
 	}
 	
 
@@ -414,6 +429,7 @@ public class RoutePayment extends Metric{
 		int win = Math.min(this.window, this.transactions.length); 
 		 this.slidingSuccess = new double[this.transactions.length-win+1];
 		 this.windowRes = new boolean[transactions.length]; 
+		 this.feeGained = new double[g.getNodeCount()]; 
 	}
 	
 	
@@ -465,6 +481,19 @@ public class RoutePayment extends Metric{
 				if (this.update) {
 					this.weightUpdate(edgeweights, originalAll);
 				}
+				
+				//fees
+				Arrays.parallelSort(this.feeGained);
+				this.feeMedian = this.feeGained[Math.floorDiv(this.feeGained.length, 2)]; 
+				this.feeQ1 = this.feeGained[Math.floorDiv(this.feeGained.length, 4)]; 
+				this.feeQ3 = this.feeGained[Math.floorDiv(3*this.feeGained.length, 4)]; 
+				this.feeMin = this.feeGained[0];
+				this.feeMax = this.feeGained[this.feeGained.length-1]; 
+				this.feeMean = 0;
+				for (int i = 0; i < this.feeGained.length; i++) {
+					this.feeMean = this.feeMean + this.feeGained[i];
+				}
+				this.feeMean = this.feeMean/this.feeGained.length; 
 	}
 	
 	/**
