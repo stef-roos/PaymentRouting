@@ -9,6 +9,7 @@ public class PaymentReactionGriefingRandom extends PaymentReactionGriefing {
 	double attFraction;
 	
 	public PaymentReactionGriefingRandom(double attP) {
+		super("GRIEF_RANDOM"); 
 		this.attFraction = attP; 
 	}
 

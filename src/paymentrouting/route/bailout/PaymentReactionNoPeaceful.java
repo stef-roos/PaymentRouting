@@ -10,6 +10,7 @@ public class PaymentReactionNoPeaceful extends PaymentReaction {
 	double pNotResolve;
 	
 	public PaymentReactionNoPeaceful(double p) {
+		super("NO_PEACEFUL_SETTLEMENT"); 
 		this.pNotResolve = p; 
 	}
 

@@ -10,8 +10,8 @@ import paymentrouting.datasets.LNParams;
 public abstract class PaymentReactionGriefing extends PaymentReaction {
 	HashSet<Integer> attackers;
 	
-	public PaymentReactionGriefing() {
-		
+	public PaymentReactionGriefing(String name) {
+		super(name); 
 	}
 
 	@Override

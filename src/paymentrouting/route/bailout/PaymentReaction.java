@@ -6,9 +6,15 @@ import gtna.graph.Edge;
 import gtna.graph.Graph;
 
 public abstract class PaymentReaction {
+	String name; 
 	
-	public PaymentReaction() {
-		
+
+	public PaymentReaction(String name) {
+		this.name = name; 
+	}
+	
+	public String getName() {
+		return name;
 	}
 	
 	//init reactions, e.g., decide on adversary 

@@ -10,6 +10,7 @@ public class PaymentReactionDelayRandom extends PaymentReaction {
 	double pDelay;
 	
 	public PaymentReactionDelayRandom(double p) {
+		super("DELAY_RANDOM"); 
 		this.pDelay = p; 
 	}
 

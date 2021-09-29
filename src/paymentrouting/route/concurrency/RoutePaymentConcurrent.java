@@ -41,11 +41,30 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		this(ps,trials,Integer.MAX_VALUE, latency, recordFile); 
 	}
 	
+	public RoutePaymentConcurrent(PathSelection ps, int trials, double latency, String recordFile, Parameter[] moreParams) {
+		this(ps,trials,Integer.MAX_VALUE, latency, recordFile, moreParams);
+	}
+	
 
 	public RoutePaymentConcurrent(PathSelection ps, int trials, int epoch, double latency, String recordFile) {
 		super(ps, trials, true, epoch, new Parameter[]{new DoubleParameter("LINK_LATENCY", latency)});
 		this.linklatency = latency; 
 		this.rec = recordFile; 
+	}
+	
+	public RoutePaymentConcurrent(PathSelection ps, int trials, int epoch, double latency, String recordFile, Parameter[] moreParams) {
+		super(ps, trials, true, epoch, extendLatParam(latency, moreParams));
+		this.linklatency = latency; 
+		this.rec = recordFile; 
+	}
+	
+	public static Parameter[] extendLatParam(double latency, Parameter[] params) {
+		Parameter[] par = new Parameter[params.length+1]; 
+		for (int i = 0; i < params.length; i++) {
+			par[i] = params[i];
+		}
+		par[params.length] = new DoubleParameter("LINK_LATENCY", latency);
+		return par; 
 	}
 	
 	public RoutePaymentConcurrent(PathSelection ps, int trials, double latency) {

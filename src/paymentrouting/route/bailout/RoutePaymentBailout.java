@@ -10,6 +10,9 @@ import gtna.data.Single;
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import gtna.graph.Node;
+import gtna.util.parameter.DoubleParameter;
+import gtna.util.parameter.Parameter;
+import gtna.util.parameter.StringParameter;
 import paymentrouting.datasets.LNParams;
 import paymentrouting.datasets.TransactionRecord;
 import paymentrouting.route.PartialPath;
@@ -43,9 +46,12 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		ALWAYS, THRESHOLD, EXPECTED  
 	}
 
-	public RoutePaymentBailout(PathSelection ps, int trials, double latency, PaymentReaction react, BailoutFee feeS, double fac, double wait,
+	public RoutePaymentBailout(PathSelection ps, int trials, double latency, String recordFile, PaymentReaction react, BailoutFee feeS, double fac, double wait,
 			AcceptFee a, double thres) {
-		super(ps, trials, latency);
+		super(ps, trials, latency, recordFile,
+				new Parameter[] {new StringParameter("PAYMENT_REACTION", react.getName()), new StringParameter("FEE_STRATEGY_BAILOUT", feeS.name()
+						+"_" + fac), new StringParameter("FEE_STRATEGY_ACCEPT", a.name()+(a.equals(AcceptFee.THRESHOLD)?thres:"")),
+						new DoubleParameter("WAITING", wait)});
 		this.react = react; 
 		this.feeStrategy = feeS; 
 		this.feeFactor = fac; 
