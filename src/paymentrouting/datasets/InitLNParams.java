@@ -32,7 +32,7 @@ public class InitLNParams extends Transformation {
       for (int out : nodes[i].getOutgoingEdges()) { //todo distributions
         double base = 0.01; // + rand.nextGaussian() * 0.1;
         double rate = 0.0001; // + rand.nextGaussian() * 0.1;
-        double delay = 5.0; // + rand.nextGaussian() * 0.1;
+        double delay = 1440; // + rand.nextGaussian() * 0.1;
         double age = 5.0; // + rand.nextGaussian() * 0.1;
         double lastFailure = 1000; // + rand.nextGaussian() * 0.1;
         double[] param = new double[] {base, rate, delay, age, lastFailure};

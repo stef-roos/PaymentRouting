@@ -80,7 +80,7 @@ public abstract class SourceStep extends PathSelection {
 			double base = this.params.getBase(e);
 			double rate = this.params.getRate(e);
 			double nval = (curVal - base)/(1+rate);
-			if (rp.computePotential(cur, succ) < nval) {
+			if (!rp.isSufficientPot(cur, succ, nval, pre)) {	
 				return null; 
 			}
 			int[] out = g.getNodes()[cur].getOutgoingEdges();

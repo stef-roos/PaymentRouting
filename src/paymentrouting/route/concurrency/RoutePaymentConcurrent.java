@@ -256,7 +256,8 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		 this.ongoingTr = new HashMap<Integer, Vector<PartialPath>>(); 
 		 this.locked = new HashMap<Edge, Double>(); 
 		 this.qLocks = new PriorityQueue<ScheduledUnlock>();
-		 preScheduled = new HashMap<Edge,HashMap<Integer,ScheduledUnlock>>();
+		 this.preScheduled = new HashMap<Edge,HashMap<Integer,ScheduledUnlock>>();
+		 this.lastTime = new HashMap<Edge, Double>(); 
 	 }
 	 
 	

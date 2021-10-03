@@ -46,8 +46,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		ALWAYS, THRESHOLD, EXPECTED  
 	}
 
-	public RoutePaymentBailout(PathSelection ps, int trials, double latency, String recordFile, PaymentReaction react, BailoutFee feeS, double fac, double wait,
-			AcceptFee a, double thres) {
+	public RoutePaymentBailout(PathSelection ps, int trials, double latency, String recordFile, PaymentReaction react, BailoutFee feeS, double fac, 
+			AcceptFee a, double thres, double wait) {
 		super(ps, trials, latency, recordFile,
 				new Parameter[] {new StringParameter("PAYMENT_REACTION", react.getName()), new StringParameter("FEE_STRATEGY_BAILOUT", feeS.name()
 						+"_" + fac), new StringParameter("FEE_STRATEGY_ACCEPT", a.name()+(a.equals(AcceptFee.THRESHOLD)?thres:"")),
@@ -156,6 +156,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	
 	@Override 
 	public boolean isSufficientPot(int s, int t, double val, int pre) {
+		//delay if bailout on-going 
+		System.out.println("entering is sufficientpot "); 
 		double limit1 = this.inBailout.get(new Edge(s,t));
 		double limit2 = this.inBailout.get(new Edge(t,s));
 		if (limit1 > this.curTime || limit2 > this.curTime) {
@@ -167,13 +169,16 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		if (!a) { //check if bailout an option 
 			//step 1: check if there are locks on this edge
 			Edge e = new Edge(s,t);
+			System.out.println("trying bailout at edge " + e.toString()); 
 			double l = this.locked.get(e);
 			if (l + this.computePotential(s, t) >= val) { //collateral locked is sufficient to forward payment 
 				//retrieve all locks 
+				System.out.println("enough capacity to try "); 
 				Vector<ScheduledUnlock[]> locksEdge = this.getLocks(new Edge(s,t));
 				for (int j = 0; j < locksEdge.size(); j++) {
 					ScheduledUnlock[] locks = locksEdge.get(j); 
 					if (locks[0] != null) { ///need way to determine
+						System.out.println("found match "); 
 						 this.bailout(s, pre, t, locks[0], locks[1], val); 
 					}
 				}
@@ -474,7 +479,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	     super.preprocess(g);
 	     this.params = (LNParams) (g.getProperty("LN_PARAMS"));
 	     this.bailouts = 0;
-	     this.feeGainedBailout = new double[g.getNodeCount()]; 
+	     this.feeGainedBailout = new double[g.getNodeCount()];
+	     this.react.init(g, rand);
 	}
 	
 	@Override
@@ -492,7 +498,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		Single f5 = new Single(this.key + "_FEE_BAIL_MIN", this.feeMinBail);
 		Single f6 = new Single(this.key + "_FEE_BAIL_MAX", this.feeMaxBail);
 		Single b = new Single(this.key + "_BAILOUTS", this.bailouts);
-		int index = singles.length-1;
+		int index = singles.length;
 		allSingle[index++] = f1; 
 		allSingle[index++] = f2; 
 		allSingle[index++] = f3; 

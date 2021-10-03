@@ -45,6 +45,7 @@ public abstract class PaymentReactionGriefing extends PaymentReaction {
 			if (par == null) {
 				return 0;
 			} else {
+				System.out.println("Delay at edge " + e.toString()); 
 				return par.getDelay(e); 
 			}
 		}
@@ -52,6 +53,7 @@ public abstract class PaymentReactionGriefing extends PaymentReaction {
 	
 	@Override
 	public boolean receiverReaction(int dst) {
+		System.out.println("Greif at destination " + dst); 
 		return !this.attackers.contains(dst); //attackers do not allow payment to succeed  
 	}
 
