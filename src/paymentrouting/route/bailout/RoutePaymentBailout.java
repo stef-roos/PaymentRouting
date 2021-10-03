@@ -481,6 +481,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	     this.bailouts = 0;
 	     this.feeGainedBailout = new double[g.getNodeCount()];
 	     this.react.init(g, rand);
+	     this.inBailout = new HashMap<Edge, Double>(); 
 	}
 	
 	@Override
