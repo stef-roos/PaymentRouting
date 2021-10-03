@@ -87,8 +87,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		double valOut = lockNS.getVal(); 
 		double fB = this.params.computeFee(new Edge(node, succ), valOut);
 		double fA = this.params.computeFee(new Edge(pre, node), valOut+fB);
-		double fC = this.params.getFeePart(new Edge(pre, node), valOut);
-		double val = valOut-fC; 
+		double val = this.params.getFeePart(new Edge(pre, node), valOut);
+		double fC = valOut-val; 
+		if (log) System.out.println("fee A " + fA + " fee B " + fB + " fee C " + fC);
 		
 		//find potential bailout node
 		double minFee = valOut;
@@ -97,12 +98,15 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		int[] neighPre = nodes[pre].getIncomingEdges();
 		for (int i: neighPre) {
 			if (nodes[succ].hasNeighbor(i)) { //shared neighbor 
+				if (log) System.out.println("Found shared neighbor " + i); 
 				//check if possible without extra fees 
 				if (!this.checkPossible(pre, succ, i, valOut+fB+fC, valOut+fB+fC, node, fB+fA+fC, fB)) {
 					continue; 
 				}
+				if (log) System.out.println("First poss check passed"); 
 				double f = this.getFeeD(pre, succ, i, valOut+fB, lockNS.getMaxTime(), curVal); //fee that neighbor charges 
 				if (this.checkPossible(pre, succ, i, valOut+fB+f+fC, valOut+fB+fC, node, fB+fA+fC+f, fB)) { //check if possible with fee
+					if (log) System.out.println("Second poss check passed");
 					if (f < minFee && this.acceptFee(f, pre, succ, node, val, lockNS.getMaxTime(), curVal)) {
 						minFee = f; 
 						bailout = i; 
@@ -157,9 +161,16 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	@Override 
 	public boolean isSufficientPot(int s, int t, double val, int pre) {
 		//delay if bailout on-going 
-		System.out.println("entering is sufficientpot "); 
-		double limit1 = this.inBailout.get(new Edge(s,t));
-		double limit2 = this.inBailout.get(new Edge(t,s));
+		if (log) System.out.println("entering is sufficientpot "); 
+		double limit1 = 0; double limit2 = 0; 
+		Edge e = new Edge(s,t); 
+		if (this.inBailout.containsKey(e)) {
+			limit1 = this.inBailout.get(e);
+		}	
+		Edge eO = new Edge(t,s); 
+		if (this.inBailout.containsKey(eO)) {
+			limit2 = this.inBailout.get(eO);
+		}	
 		if (limit1 > this.curTime || limit2 > this.curTime) {
 			this.timeAdded = Math.max(limit1, limit2);
 			return true; 
@@ -168,17 +179,17 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		if (pre == -1) return a; //not a bailout try 
 		if (!a) { //check if bailout an option 
 			//step 1: check if there are locks on this edge
-			Edge e = new Edge(s,t);
-			System.out.println("trying bailout at edge " + e.toString()); 
+			if (log) System.out.println("trying bailout at edge " + e.toString()); 
 			double l = this.locked.get(e);
 			if (l + this.computePotential(s, t) >= val) { //collateral locked is sufficient to forward payment 
 				//retrieve all locks 
-				System.out.println("enough capacity to try "); 
+				if (log) System.out.println("enough capacity to try "); 
 				Vector<ScheduledUnlock[]> locksEdge = this.getLocks(new Edge(s,t));
+				if (log) System.out.println("locks: " + locksEdge.size()); 
 				for (int j = 0; j < locksEdge.size(); j++) {
 					ScheduledUnlock[] locks = locksEdge.get(j); 
 					if (locks[0] != null) { ///need way to determine
-						System.out.println("found match "); 
+						if (log) System.out.println("found match "); 
 						 this.bailout(s, pre, t, locks[0], locks[1], val); 
 					}
 				}
@@ -193,11 +204,13 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		Vector<ScheduledUnlock[]> vec = new Vector<ScheduledUnlock[]>();
 		HashMap<Integer, ScheduledUnlock> preLink = new HashMap<Integer, ScheduledUnlock>();
 		Iterator<ScheduledUnlock> it = this.qLocks.iterator();
+		if (log) System.out.println("Total available locks: " + this.qLocks.size()); 
 		while (it.hasNext()) {
 			ScheduledUnlock lock = it.next();
 			if (lock.getEdge().equals(e)) {
 				ScheduledUnlock[] locks = new ScheduledUnlock[2];
 				locks[1] = lock;
+				vec.add(locks); 
 			} else {
 				int s = lock.getEdge().getDst();
 				if (s == e.getSrc()) {

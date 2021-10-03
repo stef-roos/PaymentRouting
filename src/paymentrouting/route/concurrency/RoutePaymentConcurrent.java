@@ -96,6 +96,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   ConcurrentTransaction cur = qTr.poll();
 		   this.curT = cur.getNr(); 
 		   curTime = cur.getTime(); 
+		   if (log) System.out.println("Step forward on tx " + this.curT + " at time " + curTime); 
 		   this.unlockAllUntil(curTime);
 		   Vector<PartialPath> vec = this.ongoingTr.get(cur.getNr()); 
 		   if (vec != null) {
@@ -348,6 +349,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	public void unlockAllUntil(double limit) {
 		ScheduledUnlock lock = this.qLocks.peek();
 		while (lock != null && lock.time <= limit) {
+			if (log) System.out.println("Remove lock of " + lock.nr + " on edge " + lock.edge + " at time " + lock.time); 
 			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(lock.edge);
 			if (map != null) {
 				map.remove(lock.nr);
