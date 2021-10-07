@@ -67,7 +67,7 @@ public class BailOutExperiments {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailout/");
 		Network net = new ReadableFile("LND", "LND", "./data/simple/simpleCon_graph.txt", new Transformation[] {new InitLNParams()});
-		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(0.4), new PaymentReactionGriefingRandom(1)};
+		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(1), new PaymentReactionGriefingRandom(0.5)};
 		RoutePaymentBailout.BailoutFee[] bfees = new RoutePaymentBailout.BailoutFee[] {BailoutFee.NORMAL, BailoutFee.FACTOR, BailoutFee.EXPECTED};
 		double[] facs = {1,10,1.2}; 
 		RoutePaymentBailout.AcceptFee[] afees = new RoutePaymentBailout.AcceptFee[] {AcceptFee.ALWAYS, AcceptFee.THRESHOLD, AcceptFee.EXPECTED};

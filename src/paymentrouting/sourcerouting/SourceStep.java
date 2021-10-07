@@ -75,22 +75,26 @@ public abstract class SourceStep extends PathSelection {
 			locks = null; 
 			HashMap<Integer, Integer> txs = this.toroute.get(cur);
 			int succ = txs.get(trnr);
-			txs.remove(trnr); 
 			Edge e = new Edge(cur, succ);
 			double base = this.params.getBase(e);
 			double rate = this.params.getRate(e);
 			double nval = (curVal - base)/(1+rate);
-			if (!rp.isSufficientPot(cur, succ, nval, pre)) {	
+			int res = rp.isSufficientPot(cur, succ, nval, pre);
+			if (res == -1) { //not enough potential	
 				return null; 
 			}
 			int[] out = g.getNodes()[cur].getOutgoingEdges();
 			double[] vals = new double[out.length]; 
+			if (res == 0) { //delays, e.g., due to bailouts 
+				return vals; 
+			}
 			for (int i = 0; i < out.length; i++) {
 			    if (out[i] == succ) {
 			    	vals[i] = vals[i]+ nval; 
 			    }
 			
 		    }
+			txs.remove(trnr); 
 			return vals; 
 		}
 		

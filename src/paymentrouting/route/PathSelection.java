@@ -38,7 +38,7 @@ public abstract class PathSelection {
 		
 	}
 	
-	public double maxLocktim(Graph g, int s, int t, int i) {
+	public double maxLocktime(Graph g, int s, int t, int i) {
 		return Double.MAX_VALUE; 
 	}
 	

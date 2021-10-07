@@ -133,8 +133,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			//locks for new path
 			ScheduledUnlock lockPD = new ScheduledUnlock(this.curTime+4*this.linklatency, new Edge(pre,bailout), lockPN.getTime(), lockPN.isSuccess(), val, lockPN.getNr()); 
 			ScheduledUnlock lockDS = new ScheduledUnlock(this.curTime+5*this.linklatency, new Edge(bailout,succ), lockNS.getTime(), lockNS.isSuccess(), val, lockNS.getNr());
-			this.qLocks.add(lockPD);
-			this.qLocks.add(lockDS);
+			lockBailout(lockPD);
+			lockBailout(lockDS);
 			//locks for fees 
 			this.timeAdded = this.timeAdded + 6*this.linklatency; //6 for setting up (2 communication with D, 4 links to setup)
 			double step = this.curTime + this.timeAdded + this.linklatency; //immediately resolved 
@@ -145,10 +145,10 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			ScheduledUnlock feeDC = new ScheduledUnlock(this.curTime+5*this.linklatency, new Edge(bailout, succ), step, true, fB+fC, lockPN.getNr());
 			step = step + this.linklatency;
 			ScheduledUnlock feeCB = new ScheduledUnlock(this.curTime+6*this.linklatency, new Edge(succ, node), step, true, fB, lockPN.getNr());
-			this.qLocks.add(feeBA); 
-			this.qLocks.add(feeAD); 
-			this.qLocks.add(feeDC); 
-			this.qLocks.add(feeCB); 
+			lockBailout(feeBA); 
+			lockBailout(feeAD); 
+			lockBailout(feeDC); 
+			lockBailout(feeCB); 
 			this.timeAdded = this.timeAdded + 4*this.linklatency; //until resolved 
 			this.inBailout.put(new Edge(pre,node), this.curTime + this.timeAdded); 
 			this.inBailout.put(new Edge(node,succ), this.curTime + this.timeAdded); 
@@ -158,8 +158,20 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		}
 	}
 	
+	private void lockBailout(ScheduledUnlock lock) {
+		this.qLocks.add(lock);
+		//add to already locked collateral
+		Double locked = this.locked.get(lock.getEdge());
+		if (locked == null) {
+			locked = 0.0; 
+		}
+		locked = locked + lock.getVal();
+		if (log) System.out.println("Locked value " + lock.getVal() + "for s=" + lock.getEdge().getSrc() + " t=" + lock.getEdge().getDst()); 
+		this.locked.put(lock.getEdge(), locked);
+	}
+	
 	@Override 
-	public boolean isSufficientPot(int s, int t, double val, int pre) {
+	public int isSufficientPot(int s, int t, double val, int pre) {
 		//delay if bailout on-going 
 		if (log) System.out.println("entering is sufficientpot "); 
 		double limit1 = 0; double limit2 = 0; 
@@ -173,11 +185,12 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		}	
 		if (limit1 > this.curTime || limit2 > this.curTime) {
 			this.timeAdded = Math.max(limit1, limit2);
-			return true; 
+			return 0; 
 		}
-		boolean a = super.isSufficientPot(s, t, val, pre);
+		int a = super.isSufficientPot(s, t, val, pre);
 		if (pre == -1) return a; //not a bailout try 
-		if (!a) { //check if bailout an option 
+		boolean tried = false;
+		if (a == -1) { //check if bailout an option 
 			//step 1: check if there are locks on this edge
 			if (log) System.out.println("trying bailout at edge " + e.toString()); 
 			double l = this.locked.get(e);
@@ -190,12 +203,15 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 					ScheduledUnlock[] locks = locksEdge.get(j); 
 					if (locks[0] != null) { ///need way to determine
 						if (log) System.out.println("found match "); 
-						 this.bailout(s, pre, t, locks[0], locks[1], val); 
+						tried = tried || this.bailout(s, pre, t, locks[0], locks[1], val); 
 					}
 				}
 			}
 			
 			
+		}
+		if (tried) {
+			a = 0; 
 		}
 		return a; 
 	}
@@ -227,10 +243,10 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	}
 	
 	private boolean checkPossible(int pre, int succ, int bailout, double valPBail, double valBailS, int node, double valNP, double valSN) {
-		boolean works = super.isSufficientPot(pre, bailout, valPBail, -1);
-		works = works & super.isSufficientPot(bailout, succ, valBailS, -1); 
-		works = works & super.isSufficientPot(node, pre, valNP, -1); 
-		works = works & super.isSufficientPot(succ, node, valSN, -1); 
+		boolean works = (super.isSufficientPot(pre, bailout, valPBail, -1)==1);
+		works = works & (super.isSufficientPot(bailout, succ, valBailS, -1)==1); 
+		works = works & (super.isSufficientPot(node, pre, valNP, -1)==1); 
+		works = works & (super.isSufficientPot(succ, node, valSN, -1)==1); 
 		return works; 
 	}
 	
@@ -317,6 +333,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	
 	private HashMap<Integer, double[]> getAllSimScores(Edge e, Vector<TransactionRecord> vec){
 		HashMap<Integer, double[]> map = new HashMap<Integer, double[]>(); 
+		if (!this.preScheduled.containsKey(e)) {
+			return map; 
+		}
 		Iterator<ScheduledUnlock> preSL = this.preScheduled.get(e).values().iterator();
 		while (preSL.hasNext()) {
 			ScheduledUnlock lock = preSL.next(); 
@@ -469,12 +488,13 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
     
     private void addNewtoPQ(PriorityQueue<LockChange> changes, Edge e, Vector<TransactionRecord> vec, double timelimit, Random rand) {
     	double t = this.curTime;
+    	if (vec.size() > 0) {
     	while (t < timelimit) {
     		TransactionRecord r = vec.get(rand.nextInt(vec.size()));
     		t = t + r.getInterval(); 
     		LockChange lockSt = new LockChange(t, r.getVal(), e, true, r.isSuccess(), r.getDuration());
     		changes.add(lockSt); 
-    		
+    	}
     	}
     }
     

@@ -178,7 +178,8 @@ public class RoutePaymentConcurrent extends RoutePayment {
    						if (this.update && !originalAll.containsKey(e)) {
    							originalAll.put(e, w); 
    						}
-   						double l = select.maxLocktim(g, cur.getSrc(), cur.getDst(), i);
+   						double l = select.maxLocktime(g, cur.getSrc(), cur.getDst(), i);
+   						if (log) System.out.println("Lock set to " + l); 
    						if (l == Double.MAX_VALUE) {
    							l = pp.lock;
    						}
@@ -420,6 +421,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		for (int j = vec.size()-2; j>= 0; j--) {
 			//schedule lock and increase timeout 
 			int s = vec.get(j);
+			if (s == t) continue; 
 			if (!this.locked.containsKey(new Edge(s,t))) {
 				System.out.println("Not contained in locks "+s + "," + t);
 				String path = "";
@@ -540,8 +542,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		int node = lock.edge.getSrc();
 		HashMap<Integer,TransactionRecord> record = this.records.get(node);
 		TransactionRecord tr = record.get(lock.nr);
-		tr.setEndT(time);
-		tr.setSuuccess(lock.success);
+		if (tr != null) { //not a bailout tx 
+		   tr.setEndT(time);
+		   tr.setSuuccess(lock.success);
+		}
 		 
 		
 	}
