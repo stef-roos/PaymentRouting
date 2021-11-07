@@ -1,5 +1,6 @@
 package paymentrouting.route.bailout;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.PriorityQueue;
@@ -10,6 +11,8 @@ import gtna.data.Single;
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import gtna.graph.Node;
+import gtna.io.DataWriter;
+import gtna.util.Distribution;
 import gtna.util.parameter.DoubleParameter;
 import gtna.util.parameter.Parameter;
 import gtna.util.parameter.StringParameter;
@@ -31,6 +34,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	HashMap<Edge, Double> inBailout; //maps a edge to time until bailout completed; delay all other operation on edge  
 	int itMC = 10;  
 	int bailouts; 
+	int bailnot;
+	int foundnot; 
 	double[] feeGainedBailout; 
 	double feeMeanBail;
 	double feeMedianBail;
@@ -38,9 +43,11 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	double feeMaxBail; 
 	double feeQ1Bail;
 	double feeQ3Bail;
+	double[] bailoutTime;
+	double[] bailoutAttTime;
 	
 	public enum BailoutFee{
-		NORMAL, FACTOR, EXPECTED  
+		NORMAL, FACTOR, EXPECTED, NEVER  
 	}
 	public enum AcceptFee{
 		ALWAYS, THRESHOLD, EXPECTED  
@@ -83,6 +90,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	}
 	
 	private boolean bailout(int node, int pre, int succ, ScheduledUnlock lockPN, ScheduledUnlock lockNS, double curVal) {
+		//add bailout attempt
+		this.bailoutAttTime[this.getCurT()/1000]++;
 		//compute fees
 		double valOut = lockNS.getVal(); 
 		double fB = this.params.computeFee(new Edge(node, succ), valOut);
@@ -96,8 +105,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		int bailout = -1;
 		Node[] nodes = this.graph.getNodes();
 		int[] neighPre = nodes[pre].getIncomingEdges();
+		boolean found = false; 
 		for (int i: neighPre) {
-			if (nodes[succ].hasNeighbor(i)) { //shared neighbor 
+			if (nodes[succ].hasNeighbor(i) && i != node) { //shared neighbor 
 				if (log) System.out.println("Found shared neighbor " + i); 
 				//check if possible without extra fees 
 				if (!this.checkPossible(pre, succ, i, valOut+fB+fC, valOut+fB+fC, node, fB+fA+fC, fB)) {
@@ -107,6 +117,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 				double f = this.getFeeD(pre, succ, i, valOut+fB, lockNS.getMaxTime(), curVal); //fee that neighbor charges 
 				if (this.checkPossible(pre, succ, i, valOut+fB+f+fC, valOut+fB+fC, node, fB+fA+fC+f, fB)) { //check if possible with fee
 					if (log) System.out.println("Second poss check passed");
+					found = true; 
 					if (f < minFee && this.acceptFee(f, pre, succ, node, val, lockNS.getMaxTime(), curVal)) {
 						minFee = f; 
 						bailout = i; 
@@ -117,11 +128,18 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		
 		 
 		if (bailout == -1) {
+			if (found) {
+				this.bailnot++;
+			} else {
+				this.foundnot++; 
+			}
 			return false;
+			
 		} else {
 			//update metrics for bailout 
 			bailouts++; 
 			this.feeGainedBailout[bailout] = this.feeGainedBailout[bailout] + minFee; 
+			this.bailoutTime[this.getCurT()/1000]++;
 			//change locks
 			//remove old ones 
 			lockPN.setSuccess(false);
@@ -172,6 +190,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	
 	@Override 
 	public int isSufficientPot(int s, int t, double val, int pre) {
+		if (this.feeStrategy == BailoutFee.NEVER) {
+			return super.isSufficientPot(s, t, val, pre); 
+		}
 		//delay if bailout on-going 
 		if (log) System.out.println("entering is sufficientpot "); 
 		double limit1 = 0; double limit2 = 0; 
@@ -193,7 +214,10 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		if (a == -1) { //check if bailout an option 
 			//step 1: check if there are locks on this edge
 			if (log) System.out.println("trying bailout at edge " + e.toString()); 
-			double l = this.locked.get(e);
+			Double l = this.locked.get(e);
+			if (l == null) {
+				l = 0.0; 
+			}
 			if (l + this.computePotential(s, t) >= val) { //collateral locked is sufficient to forward payment 
 				//retrieve all locks 
 				if (log) System.out.println("enough capacity to try "); 
@@ -254,7 +278,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		switch (this.feeStrategy) {
 		case NORMAL: return this.params.computeFee(new Edge(bailout, succ), val); 
 		case FACTOR: return this.feeFactor*this.params.computeFee(new Edge(bailout, succ), val);
-		case EXPECTED: return this.feeFactor*this.estimateMCFee(pre, succ, bailout, val, true, timeout, curVal);
+		case EXPECTED: return Math.max(this.feeFactor*this.estimateMCFee(pre, succ, bailout, val, true, timeout, curVal), this.params.computeFee(new Edge(bailout, succ), val));
 		default: return Double.MAX_VALUE;
 		}
 	}
@@ -512,15 +536,19 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	     super.preprocess(g);
 	     this.params = (LNParams) (g.getProperty("LN_PARAMS"));
 	     this.bailouts = 0;
+	     this.bailnot = 0;
+	     this.foundnot = 0; 
 	     this.feeGainedBailout = new double[g.getNodeCount()];
 	     this.react.init(g, rand);
 	     this.inBailout = new HashMap<Edge, Double>(); 
+	     this.bailoutTime = new double[(int)Math.ceil(this.transactions.length/1000)];
+	     this.bailoutAttTime = new double[(int)Math.ceil(this.transactions.length/1000)];
 	}
 	
 	@Override
 	public Single[] getSingles() {
 		Single[] singles = super.getSingles();
-		Single[] allSingle = new Single[singles.length+7];
+		Single[] allSingle = new Single[singles.length+10];
 		for (int i = 0; i < singles.length; i++) {
 			allSingle[i] = singles[i]; 
 		}
@@ -532,6 +560,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		Single f5 = new Single(this.key + "_FEE_BAIL_MIN", this.feeMinBail);
 		Single f6 = new Single(this.key + "_FEE_BAIL_MAX", this.feeMaxBail);
 		Single b = new Single(this.key + "_BAILOUTS", this.bailouts);
+		Single bfn = new Single(this.key + "_BAILOUT_NOT_ACCEPTED", this.bailnot);
+		Single bnf = new Single(this.key + "_BAILOUT_NOT_FOUND", this.foundnot);
+		Single ball = new Single(this.key + "_BAILOUT_ATTEMPTS", this.foundnot + this.bailnot + this.bailouts);
 		int index = singles.length;
 		allSingle[index++] = f1; 
 		allSingle[index++] = f2; 
@@ -540,8 +571,20 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		allSingle[index++] = f5; 
 		allSingle[index++] = f6;
 		allSingle[index++] = b; 
+		allSingle[index++] = bfn;
+		allSingle[index++] = bnf;
+		allSingle[index++] = ball; 
 
 		return allSingle; 
+	}
+	
+	@Override
+	public boolean writeData(String folder) {
+		boolean succ = super.writeData(folder);
+		succ &= DataWriter.writeWithIndex(this.bailoutAttTime,
+				this.key+"_ATTEMPTED_BAILOUT_TIME", folder);
+		succ &= DataWriter.writeWithIndex(this.bailoutTime,
+				this.key+"_BAILOUT_TIME", folder);
 	}
 	
 	@Override 
@@ -554,6 +597,24 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	    	double fee = this.params.computeFee(lock.getEdge(), lock.getVal()); 
 	    	this.feeGained[s] = this.feeGained[s] + fee; 
 	    }
+	}
+	
+	@Override
+	public void postprocess() {
+		//compute final stats
+		super.postprocess();
+		//bailout fee
+		Arrays.parallelSort(this.feeGainedBailout);
+		this.feeMedianBail = this.feeGainedBailout[Math.floorDiv(this.feeGainedBailout.length, 2)]; 
+		this.feeQ1Bail = this.feeGainedBailout[Math.floorDiv(this.feeGainedBailout.length, 4)]; 
+		this.feeQ3Bail = this.feeGainedBailout[Math.floorDiv(3*this.feeGainedBailout.length, 4)]; 
+		this.feeMinBail = this.feeGainedBailout[0];
+		this.feeMaxBail = this.feeGainedBailout[this.feeGainedBailout.length-1]; 
+		this.feeMeanBail = 0;
+		for (int i = 0; i < this.feeGainedBailout.length; i++) {
+			this.feeMeanBail = this.feeMeanBail + this.feeGainedBailout[i];
+		}
+		this.feeMeanBail = this.feeMeanBail/this.feeGainedBailout.length; 
 	}
 	
 	

@@ -43,7 +43,7 @@ public class RoutePayment extends Metric{
 	protected Random rand;
 	protected boolean update; 
 	protected Transaction[] transactions;
-	protected boolean log = true;
+	protected boolean log = false;
 	protected PathSelection select;
 	protected CreditLinks edgeweights; 
 	protected int tInterval = 1000;

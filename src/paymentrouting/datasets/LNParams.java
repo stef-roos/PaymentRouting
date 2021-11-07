@@ -103,7 +103,7 @@ public class LNParams extends GraphProperty {
   }
 
   public LNParams rand(Graph g) {
-    Random r = new Random(12345);
+    Random r = new Random();
     this.params = new HashMap<>();
     for (Edge e: g.getEdges().getEdges()) {
       double base = r.nextDouble() * 1000;
@@ -118,6 +118,9 @@ public class LNParams extends GraphProperty {
   
   public double computeFee(Edge e, double val) {
 	  double[] pars = this.params.get(e);
+	  if (pars == null) {
+		  System.out.println(e.toString()); 
+	  }
 	  return pars[0] + val*pars[1];
   }
   

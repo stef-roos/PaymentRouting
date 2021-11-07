@@ -43,7 +43,6 @@ public class PaymentReactionDelayRandom extends PaymentReaction {
 			if (par == null) {
 				return 0;
 			} else {
-				System.out.println("Delay at edge " + e.toString()); 
 				return par.getDelay(e); 
 			}
 		}

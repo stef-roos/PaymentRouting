@@ -156,7 +156,6 @@ public class RoutePaymentConcurrent extends RoutePayment {
                for (int l = 0; l < past.size(); l++) {
            		excluded[past.get(l)] = false;
            	   }
-               past.add(curN);
                
                //recording
                if (this.rec != null && partVals != null) {
@@ -189,8 +188,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
    						this.lock(curN, out[k], partVals[k], cur.nr, l); 
                			if (out[k] != cur.getDst()) {
                				//more hops
+               				Vector<Integer> res = (Vector<Integer>)past.clone();
+               				res.add(curN); 
                				PartialPath pth = new PartialPath(out[k], partVals[k], 
-               						(Vector<Integer>)past.clone(),pp.reality);
+               						res,pp.reality);
                				if (l != Double.MAX_VALUE) {
                					pth.addLock(l);
                				}
@@ -198,6 +199,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
                			} else {
                				//destination reached 
                				Vector<Integer> res = (Vector<Integer>)past.clone();
+               				res.add(curN); 
                				res.add(cur.getDst()); 
                				PartialPath pth = new PartialPath(out[k], partVals[k], 
                						res,pp.reality); 
@@ -221,9 +223,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
                	}
                } else {
 		            //if not next hops found: schedule unlock for failed partial path
-            	   this.schedulePath(past, curTime, pp.val, false);
             	   Vector<Integer> res = (Vector<Integer>)past.clone();
-      				res.add(-1);
+            	   res.add(curN); 
+            	   this.schedulePath(res, curTime, pp.val, false);
+            	   res.add(-1);
             	   next.add(new PartialPath(-1, pp.val, 
       						res,pp.reality));
                }
@@ -233,7 +236,8 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   this.timeAdded = 0; 
 		   ongoingTr.put(cur.getNr(),next);
 		   qTr.add(cur); 
-		 }     
+		 } 
+		 this.unlockAllUntil(Double.MAX_VALUE);
 	 }
 	 
 	 /**
