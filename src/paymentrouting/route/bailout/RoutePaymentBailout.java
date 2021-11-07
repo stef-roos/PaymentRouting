@@ -585,6 +585,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 				this.key+"_ATTEMPTED_BAILOUT_TIME", folder);
 		succ &= DataWriter.writeWithIndex(this.bailoutTime,
 				this.key+"_BAILOUT_TIME", folder);
+		return succ; 
 	}
 	
 	@Override 
