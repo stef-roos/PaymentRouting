@@ -4,6 +4,7 @@ import gtna.data.Series;
 import gtna.graph.Graph;
 import gtna.io.graphWriter.GtnaGraphWriter;
 import gtna.metrics.Metric;
+import gtna.metrics.basic.DegreeDistribution;
 import gtna.networks.Network;
 import gtna.networks.model.BarabasiAlbert;
 import gtna.networks.util.ReadableFile;
@@ -26,7 +27,7 @@ public class BailOutExperiments {
 	public static void main(String[] args) {
 		//rewriteGraphWithCap("lightning/lngraph_2020_03_01__04_00.json", "lightning/lngraph_2020_03_01__04_00-cap.graph"); 
 		//stats("lightning/lngraph_2021_07_26__14_00.graph", "2021-snapshot.txt"); 
-		testLightning(); 
+		testLightningDelay(); 
 	}
 	
 	public static void rewriteGraphWithCap(String file, String output) {
@@ -99,14 +100,23 @@ public class BailOutExperiments {
 	
 	}
 	
-	public static void testLightning() {
+	public static void testDAS() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailout/");
+		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
+		Network net = new ReadableFile("LIGHTNING", "LIGHTNING", file, null);
+		Metric[] m = new Metric[] {new DegreeDistribution()};
+		Series.generate(net, m, 1); 
+	}
+	
+	public static void testLightningDelay() {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailout/");
 		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
 		Transformation[] trans = new Transformation[] {new InitCapacities(4000000,BalDist.EXP), 
 				new Transactions(400000, TransDist.EXP, false, 100000, 10, false), new InitLNParams()};
 		Network net = new ReadableFile("LIGHTNING", "LIGHTNING", file, trans);
-		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(0.05), new PaymentReactionGriefingRandom(0.1)};
+		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(0.1)};
 		RoutePaymentBailout.BailoutFee[] bfees = new RoutePaymentBailout.BailoutFee[] { BailoutFee.NORMAL, BailoutFee.FACTOR, BailoutFee.EXPECTED};
 		double[] facs = {1,10,1.2}; 
 		RoutePaymentBailout.AcceptFee[] afees = new RoutePaymentBailout.AcceptFee[] {AcceptFee.ALWAYS, AcceptFee.THRESHOLD, AcceptFee.EXPECTED};
