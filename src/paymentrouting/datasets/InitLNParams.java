@@ -24,7 +24,7 @@ public class InitLNParams extends Transformation {
     //init variables
     Node[] nodes = g.getNodes();
     Random rand = new Random();
-    HashMap<Edge, double[]> params = new HashMap<>();
+    HashMap<Edge, double[]> params = new HashMap<Edge, double[]>();
     LNParams links = new LNParams();
 
     //iterate over links and add

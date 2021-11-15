@@ -26,7 +26,7 @@ public class LNParams extends GraphProperty {
 
 
   public LNParams() {
-    this.params = new HashMap<>();
+    this.params = new HashMap<Edge, double[]>();
   }
 
   public void setParams(Map<Edge, double[]> params) {
@@ -104,7 +104,7 @@ public class LNParams extends GraphProperty {
 
   public LNParams rand(Graph g) {
     Random r = new Random();
-    this.params = new HashMap<>();
+    this.params = new HashMap<Edge, double[]>();
     for (Edge e: g.getEdges().getEdges()) {
       double base = r.nextDouble() * 1000;
       double rate = r.nextDouble();

@@ -4,6 +4,7 @@ import java.util.Random;
 
 import gtna.graph.Edge;
 import gtna.graph.Graph;
+import treeembedding.credit.Transaction;
 
 public abstract class PaymentReaction {
 	String name; 
@@ -18,7 +19,7 @@ public abstract class PaymentReaction {
 	}
 	
 	//init reactions, e.g., decide on adversary 
-	public abstract void init(Graph g, Random rand); 
+	public abstract Transaction[] init(Graph g, Random rand, Transaction[] txs); 
 	
 	//accept a payment
 	public abstract boolean acceptLock(Graph g, int node, double time, double val, Random rand);

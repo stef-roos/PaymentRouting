@@ -5,6 +5,7 @@ import java.util.Random;
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import paymentrouting.datasets.LNParams;
+import treeembedding.credit.Transaction;
 
 public class PaymentReactionDelayRandom extends PaymentReaction {
 	double pDelay;
@@ -15,8 +16,8 @@ public class PaymentReactionDelayRandom extends PaymentReaction {
 	}
 
 	@Override
-	public void init(Graph g, Random rand) {
-		// nothing to do 
+	public Transaction[] init(Graph g, Random rand, Transaction[] txs) {
+		return txs;
 		
 	}
 

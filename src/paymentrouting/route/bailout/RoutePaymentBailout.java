@@ -533,13 +533,14 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
     
 	
 	public void preprocess(Graph g) {
-	     super.preprocess(g);
+		super.preprocess(g);
+		this.transactions = this.react.init(g, rand,this.transactions);
+		super.preprocess(g); 
 	     this.params = (LNParams) (g.getProperty("LN_PARAMS"));
 	     this.bailouts = 0;
 	     this.bailnot = 0;
 	     this.foundnot = 0; 
 	     this.feeGainedBailout = new double[g.getNodeCount()];
-	     this.react.init(g, rand);
 	     this.inBailout = new HashMap<Edge, Double>(); 
 	     this.bailoutTime = new double[(int)Math.ceil(this.transactions.length/1000)];
 	     this.bailoutAttTime = new double[(int)Math.ceil(this.transactions.length/1000)];

@@ -6,18 +6,24 @@ import java.util.Random;
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import paymentrouting.datasets.LNParams;
+import paymentrouting.route.attack.GriefingAttack;
+import treeembedding.credit.CreditLinks;
+import treeembedding.credit.Transaction;
 
 public abstract class PaymentReactionGriefing extends PaymentReaction {
 	HashSet<Integer> attackers;
+	GriefingAttack att;
 	
-	public PaymentReactionGriefing(String name) {
+	public PaymentReactionGriefing(String name, GriefingAttack att) {
 		super(name); 
+		this.att = att; 
 	}
 
 	@Override
-	public void init(Graph g, Random rand) {
+	public Transaction[] init(Graph g, Random rand, Transaction[] txs) {
 		this.attackers = getAttackers(g,rand); 
-		
+		CreditLinks weights = (CreditLinks) g.getProperty("CREDIT_LINKS"); 
+		return att.addTx(txs, this.attackers, rand, g, weights); 
 	}
 	
 	public abstract HashSet<Integer> getAttackers(Graph g, Random rand);

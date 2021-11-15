@@ -17,6 +17,10 @@ public class ConcurrentTransaction extends Transaction implements Comparable<Con
 	public int getNr() {
 		return nr;
 	}
+	
+	public void setNr(int nr) {
+		this.nr = nr;
+	}
 
 
 	@Override
