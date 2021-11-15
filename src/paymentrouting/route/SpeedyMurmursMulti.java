@@ -6,7 +6,6 @@ import gtna.graph.Graph;
 import gtna.graph.Node;
 import gtna.graph.spanningTree.SpanningTree;
 import gtna.transformation.spanningtree.MultipleSpanningTree;
-import paymentrouting.route.DistanceFunction.Timelock;
 import treeembedding.treerouting.TreeCoordinates;
 import treeembedding.vouteoverlay.Treeembedding;
 
@@ -113,6 +112,7 @@ public class SpeedyMurmursMulti extends DistanceFunction {
 		//embed
 		Treeembedding embed = new Treeembedding("T",60,roots, 
 					 MultipleSpanningTree.Direct.TWOPHASE);
+		
 			  g = embed.transform(g);
 		  
 		 for (int i = 0; i < this.realities; i++) {

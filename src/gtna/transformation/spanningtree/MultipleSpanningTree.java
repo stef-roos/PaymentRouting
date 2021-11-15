@@ -55,12 +55,13 @@ public class MultipleSpanningTree extends Transformation {
 			if (graph.hasProperty("CREDIT_LINKS")){
 				edgeweights = (CreditLinks) graph.getProperty("CREDIT_LINKS");
 			}
-			if (this.rootSelector.equals("bfs") && edgeweights == null){
+			if (this.rootSelector.equals("bfs")){
 				Transformation tbfs = new BFSRand("rand", rand);
 				for (int i = 0; i < trees; i++){
 				    graph = tbfs.transform(graph);
 				}
 			} else {
+				//select roots 
 				int[] roots = new int[this.trees]; 
 				if (this.rootSelector.equals("rand") || this.rootSelector.equals("bfs")){
 				     for (int i = 0; i < roots.length; i++){
@@ -72,11 +73,13 @@ public class MultipleSpanningTree extends Transformation {
 						roots[i] = r[i % r.length];
 					}
 				}
+				//set up spanning tree
 				Vector<HashMap<Integer, ParentChild>> parentChildMap = new Vector<HashMap<Integer, ParentChild>>();
 				HashMap<Integer, Vector<int[]>> offers = new HashMap<Integer, Vector<int[]>>();
 				Node[] nodes = graph.getNodes();
-				int[][] parCount = new int[nodes.length][];
+				int[][] parCount = new int[nodes.length][]; //count nr of parents 
 				for (int i = 0; i < nodes.length; i++){
+					//obtain set of neighbors that are potential parents based on capacity
 					int l;
 					if (this.oneDSel == Direct.TWOPHASE){
 						l = potParents(graph, nodes[i], Direct.NONE, edgeweights).length;
@@ -90,6 +93,7 @@ public class MultipleSpanningTree extends Transformation {
 					parentChildMap.add(map);
 					map.put(roots[i], new ParentChild(-1,
 							roots[i], 0));
+					//obtain pot children of root 
 					int[] out = potChildren(graph, nodes[roots[i]], this.oneDSel, edgeweights);
 					if (out.length == 0){
 						out = potChildren(graph, nodes[roots[i]], Direct.EITHER, edgeweights);
@@ -97,6 +101,7 @@ public class MultipleSpanningTree extends Transformation {
 							out = potChildren(graph, nodes[roots[i]], Direct.NONE, edgeweights);
 						}
 					}
+					//root offers neighbors child position 
 					for (int j = 0; j < out.length; j++){
 						Vector<int[]> vec = offers.get(out[j]);
 						if (vec == null){
@@ -108,16 +113,18 @@ public class MultipleSpanningTree extends Transformation {
 				}
 				
 				while (!offers.isEmpty()){
+					//iterate over nodes with offers 
 					Iterator<Entry<Integer,Vector<int[]>>> it = offers.entrySet().iterator();
 					HashMap<Integer, int[]> next = new HashMap<Integer, int[]>();
 					while (it.hasNext()){
+						//obtain data
 						Entry<Integer,Vector<int[]>> entry = it.next();
 						int index = entry.getKey();
 						Vector<int[]> vec = entry.getValue();
-						int min = this.trees;
 						int[] out = this.potParents(graph, nodes[index], Direct.NONE, edgeweights);
 					    String pot = "";
 						HashMap<Integer, Integer> mapIndex = new HashMap<Integer, Integer>(out.length);
+						int min = this.trees; //minimal tiem a neighbor is a parent 
 						for (int j = 0; j < out.length; j++){
 							if (parCount[index][j] < min){
 								min = parCount[index][j];
@@ -127,6 +134,7 @@ public class MultipleSpanningTree extends Transformation {
 						}
 						Vector<Integer> choice = new Vector<Integer>();
 						int curM = min;
+						//add to choice all parents with minimal distance 
 						while (choice.isEmpty()){
 							for (int j = 0; j < vec.size(); j++){
 								int[] a = vec.get(j);
@@ -141,6 +149,8 @@ public class MultipleSpanningTree extends Transformation {
 				            if (choice.isEmpty()) curM++;
 						}
 						if (curM > min){
+							//wait another round to see if a different parent can be used
+							//this should never happen when p=1
 							if (rand.nextDouble() > p){
 								continue;
 							}
@@ -167,6 +177,7 @@ public class MultipleSpanningTree extends Transformation {
 						next.put(index, a);
 						parCount[index][mapIndex.get(a[0])]++;
 					}
+					//generate offers for next level 
 					Iterator<Entry<Integer,int[]>> itnext = next.entrySet().iterator();
 					while (itnext.hasNext()){
 						Entry<Integer,int[]> entry = itnext.next();
@@ -200,9 +211,6 @@ public class MultipleSpanningTree extends Transformation {
 									offers.put(out[j],vecOut);
 								}
 								vecOut.add(o);
-								if(out[j] == 55604){
-									
-								}
 							}
 						}
 					}
