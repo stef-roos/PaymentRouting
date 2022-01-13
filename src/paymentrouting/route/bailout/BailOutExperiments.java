@@ -32,6 +32,13 @@ import paymentrouting.util.LightningJsonReader;
 
 public class BailOutExperiments {
 	
+	
+	/**
+	 * run experiments for our paper "Get Me out of This Payment!Bailout: An HTLC Re-routing Protocol"
+	 * NOTE: need a lot of memory and days to run, were run on clustering system
+	 * for local tests: there are smaller experiments at the end of this file (e.g., 500 node BA) 
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		int i = Integer.parseInt(args[0]); //run; varied between 0 and 9 
 		double p = Double.parseDouble(args[1]); // probability to delay/not settle/grief
