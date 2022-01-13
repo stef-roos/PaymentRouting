@@ -76,7 +76,6 @@ public class GriefingAttack {
 			allTx[nrAll] = txs[nrNormal]; 
 			nrAll++; nrNormal++; 
 		}
-		System.out.println("tx " + allTx.length); 
 		return allTx; 
 	}
 

@@ -12,7 +12,7 @@ import gtna.graph.Edge;
 import gtna.graph.Graph;
 import gtna.graph.Node;
 import gtna.io.DataWriter;
-import gtna.util.Distribution;
+import gtna.util.parameter.BooleanParameter;
 import gtna.util.parameter.DoubleParameter;
 import gtna.util.parameter.Parameter;
 import gtna.util.parameter.StringParameter;
@@ -45,17 +45,53 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	double feeQ3Bail;
 	double[] bailoutTime;
 	double[] bailoutAttTime;
+	double gini;
+	HashMap<Integer,Vector<double[]>> feeHistory;
+	HashMap<Edge,Vector<double[]>> feeHistoryEdge;
+	boolean multi;
+	
+	
 	
 	public enum BailoutFee{
-		NORMAL, FACTOR, EXPECTED, NEVER  
+		NORMAL, FACTOR, EXPECTED, NEVER, TOTAL, TOTALEDGE, BUFFER   
 	}
 	public enum AcceptFee{
-		ALWAYS, THRESHOLD, EXPECTED  
+		ALWAYS, THRESHOLD, EXPECTED, TOTAL, TOTALEDGE, NEXT 
 	}
 
 	public RoutePaymentBailout(PathSelection ps, int trials, double latency, String recordFile, PaymentReaction react, BailoutFee feeS, double fac, 
-			AcceptFee a, double thres, double wait) {
+			AcceptFee a, double thres, double wait, boolean m) {
 		super(ps, trials, latency, recordFile,
+				new Parameter[] {new StringParameter("PAYMENT_REACTION", react.getName()), new StringParameter("FEE_STRATEGY_BAILOUT", feeS.name()
+						+"_" + fac), new StringParameter("FEE_STRATEGY_ACCEPT", a.name()+(a.equals(AcceptFee.THRESHOLD)?thres:"")),
+						new DoubleParameter("WAITING", wait), new BooleanParameter("MULTI", m)});
+		this.react = react; 
+		this.feeStrategy = feeS; 
+		this.feeFactor = fac; 
+		this.waitingTime = wait; 
+		this.aFeeStrategy = a; 
+		this.threshold = thres; 
+		this.multi = m;
+	}
+	
+	public RoutePaymentBailout(PathSelection ps, int trials, double latency, PaymentReaction react, BailoutFee feeS, double fac, 
+			AcceptFee a, double thres, double wait, boolean m) {
+		super(ps, trials, latency, 
+				new Parameter[] {new StringParameter("PAYMENT_REACTION", react.getName()), new StringParameter("FEE_STRATEGY_BAILOUT", feeS.name()
+						+"_" + fac), new StringParameter("FEE_STRATEGY_ACCEPT", a.name()+(a.equals(AcceptFee.THRESHOLD)?thres:"")),
+						new DoubleParameter("WAITING", wait), new BooleanParameter("MULTI", m)});
+		this.react = react; 
+		this.feeStrategy = feeS; 
+		this.feeFactor = fac; 
+		this.waitingTime = wait; 
+		this.aFeeStrategy = a; 
+		this.threshold = thres; 
+		this.multi = m;
+	}
+	
+	public RoutePaymentBailout(PathSelection ps, int trials, double latency, PaymentReaction react, BailoutFee feeS, double fac, 
+			AcceptFee a, double thres, double wait) {
+		super(ps, trials, latency, 
 				new Parameter[] {new StringParameter("PAYMENT_REACTION", react.getName()), new StringParameter("FEE_STRATEGY_BAILOUT", feeS.name()
 						+"_" + fac), new StringParameter("FEE_STRATEGY_ACCEPT", a.name()+(a.equals(AcceptFee.THRESHOLD)?thres:"")),
 						new DoubleParameter("WAITING", wait)});
@@ -66,6 +102,13 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		this.aFeeStrategy = a; 
 		this.threshold = thres; 
 	}
+	
+	public RoutePaymentBailout(PathSelection ps, int trials, double latency, String recordFile, PaymentReaction react, BailoutFee feeS, double fac, 
+			AcceptFee a, double thres, double wait) {
+		this(ps, trials, latency, recordFile, react, feeS, fac, a, thres, wait, false); 
+	}
+	
+
 	
 	@Override 
 	protected boolean agree(int curN, double val, double curTime) {
@@ -96,9 +139,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		double valOut = lockNS.getVal(); 
 		double fB = this.params.computeFee(new Edge(node, succ), valOut);
 		double fA = this.params.computeFee(new Edge(pre, node), valOut+fB);
-		double val = this.params.getFeePart(new Edge(pre, node), valOut);
-		double fC = valOut-val; 
-		if (log) System.out.println("fee A " + fA + " fee B " + fB + " fee C " + fC);
+		//double val = this.params.getFeePart(new Edge(node, succ), valOut);
+		double fC = this.params.computeFee(new Edge(succ, node), valOut+fB); 
+		//if (log) System.out.println("fee A " + fA + " fee B " + fB + " fee C " + fC);
 		
 		//find potential bailout node
 		double minFee = valOut;
@@ -110,15 +153,15 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			if (nodes[succ].hasNeighbor(i) && i != node) { //shared neighbor 
 				if (log) System.out.println("Found shared neighbor " + i); 
 				//check if possible without extra fees 
-				if (!this.checkPossible(pre, succ, i, valOut+fB+fC, valOut+fB+fC, node, fB+fA+fC, fB)) {
+				if (!this.checkPossible(pre, succ, i, valOut+fB, valOut+fB, node, fB+fA, fB)) {
 					continue; 
 				}
 				if (log) System.out.println("First poss check passed"); 
 				double f = this.getFeeD(pre, succ, i, valOut+fB, lockNS.getMaxTime(), curVal); //fee that neighbor charges 
-				if (this.checkPossible(pre, succ, i, valOut+fB+f+fC, valOut+fB+fC, node, fB+fA+fC+f, fB)) { //check if possible with fee
+				if (this.checkPossible(pre, succ, i, valOut+fB+f, valOut+fB, node, fB+fA+f, fB)) { //check if possible with fee
 					if (log) System.out.println("Second poss check passed");
 					found = true; 
-					if (f < minFee && this.acceptFee(f, pre, succ, node, val, lockNS.getMaxTime(), curVal)) {
+					if (f < minFee && this.acceptFee(f, pre, succ, node, valOut, lockNS.getMaxTime(), curVal)) {
 						minFee = f; 
 						bailout = i; 
 					}
@@ -128,6 +171,10 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		
 		 
 		if (bailout == -1) {
+			if (this.multi) {
+				return this.bailout2(node, pre, succ, lockPN, lockNS, curVal); 
+				
+			}
 			if (found) {
 				this.bailnot++;
 			} else {
@@ -139,6 +186,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			//update metrics for bailout 
 			bailouts++; 
 			this.feeGainedBailout[bailout] = this.feeGainedBailout[bailout] + minFee; 
+			this.feeGainedBailout[node] = this.feeGainedBailout[node] - minFee; 
 			this.bailoutTime[this.getCurT()/1000]++;
 			//change locks
 			//remove old ones 
@@ -149,8 +197,8 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			this.unlock(lockPN); 
 			this.unlock(lockNS); 
 			//locks for new path
-			ScheduledUnlock lockPD = new ScheduledUnlock(this.curTime+4*this.linklatency, new Edge(pre,bailout), lockPN.getTime(), lockPN.isSuccess(), val, lockPN.getNr()); 
-			ScheduledUnlock lockDS = new ScheduledUnlock(this.curTime+5*this.linklatency, new Edge(bailout,succ), lockNS.getTime(), lockNS.isSuccess(), val, lockNS.getNr());
+			ScheduledUnlock lockPD = new ScheduledUnlock(this.curTime+4*this.linklatency, new Edge(pre,bailout), lockPN.getTime(), lockPN.isSuccess(), valOut, lockPN.getNr()); 
+			ScheduledUnlock lockDS = new ScheduledUnlock(this.curTime+5*this.linklatency, new Edge(bailout,succ), lockNS.getTime(), lockNS.isSuccess(), valOut, lockNS.getNr());
 			lockBailout(lockPD);
 			lockBailout(lockDS);
 			//locks for fees 
@@ -176,6 +224,111 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		}
 	}
 	
+	private boolean bailout2(int node, int pre, int succ, ScheduledUnlock lockPN, ScheduledUnlock lockNS, double curVal) {
+		double valOut = lockNS.getVal(); 
+		double fB = this.params.computeFee(new Edge(node, succ), valOut);
+		double fA = this.params.computeFee(new Edge(pre, node), valOut+fB);
+		//double val = this.params.getFeePart(new Edge(node, succ), valOut);
+		double fC = this.params.computeFee(new Edge(succ, node), valOut+fB); 
+		//if (log) System.out.println("fee A " + fA + " fee B " + fB + " fee C " + fC);
+		
+		//find potential bailout nodes 
+		double minFee = valOut;
+		double minBail1=0,minBail2 = 0;
+		int bailout1 = -1;
+		int bailout2 = -1; 
+		Node[] nodes = this.graph.getNodes();
+		int[] neighPre = nodes[pre].getIncomingEdges();
+		boolean found = false; 
+		
+		//try two intermediaries
+		int[] neighSucc = nodes[succ].getIncomingEdges();
+		for (int i: neighSucc) {
+			if (i != node && i != pre && i != succ) {
+			for (int j: neighPre) {
+				if (nodes[i].hasNeighbor(j) && j != node && j != pre && j != succ && i != j) {
+					if (!this.checkPossible(pre, succ, j, i, valOut+fB, valOut+fB, valOut+fB, node, fB+fA, fB)) {
+						continue;
+					}
+					double fi = this.getFeeD(j, succ, i, valOut+fB, lockNS.getMaxTime(), curVal);
+					double fj = this.getFeeD(pre, i, j, valOut+fB+fi, 
+							lockPN.getMaxTime() + (lockNS.getMaxTime()-lockPN.getMaxTime())/2, curVal);
+					if (this.checkPossible(pre, succ, j, i, valOut+fB+fj+fi, valOut+fB+fi, valOut+fB, node, 
+							fB+fA+fi+fj, fB)) {
+						found = true; 
+						if (fi+fj < minFee && this.acceptFee(fi+fj, pre, succ, node, valOut, lockNS.getMaxTime(), curVal)) {
+							minFee = fi+fj; 
+							minBail1 = fi;
+							minBail2 = fi;
+							bailout1 = j;
+							bailout2 = i;
+						}
+					}
+				}
+			}
+			}
+		}
+		
+		if (bailout1 == -1) {
+			if (found) {
+				this.bailnot++;
+			} else {
+				this.foundnot++; 
+			}
+			return false;
+			
+		} else {
+			//update metrics for bailout 
+			bailouts++; 
+			this.feeGainedBailout[bailout1] = this.feeGainedBailout[bailout1] + minBail1; 
+			this.feeGainedBailout[bailout2] = this.feeGainedBailout[bailout2] + minBail2;
+			this.feeGainedBailout[node] = this.feeGainedBailout[node] - minFee; 
+			this.bailoutTime[this.getCurT()/1000]++;
+			//change locks
+			//remove old ones 
+			lockPN.setSuccess(false);
+			lockNS.setSuccess(false);
+			this.qLocks.remove(lockPN); 
+			this.qLocks.remove(lockNS); 
+			this.unlock(lockPN); 
+			this.unlock(lockNS); 
+			//locks for new path
+			ScheduledUnlock lockPD = new ScheduledUnlock(this.curTime+6*this.linklatency, new Edge(pre,bailout1), lockPN.getTime(), 
+					lockPN.isSuccess(), valOut, lockPN.getNr()); 
+			ScheduledUnlock lockInter = new ScheduledUnlock(this.curTime+7*this.linklatency, new Edge(bailout1,bailout2), 
+					(lockNS.getTime()+lockNS.getTime())/2, lockPN.isSuccess(), valOut, lockPN.getNr()); 
+			ScheduledUnlock lockDS = new ScheduledUnlock(this.curTime+8*this.linklatency, new Edge(bailout2,succ), 
+					lockNS.getTime(), lockNS.isSuccess(), valOut, lockNS.getNr());
+			lockBailout(lockPD);
+			lockBailout(lockInter); 
+			lockBailout(lockDS);
+			//locks for fees 
+			this.timeAdded = this.timeAdded + 9*this.linklatency; //9 for setting up (4 communication with Ds, 5 links to setup)
+			double step = this.curTime + this.timeAdded + this.linklatency; //immediately resolved 
+			ScheduledUnlock feeBA = new ScheduledUnlock(this.curTime+5*this.linklatency, new Edge(node,pre), step, true, fB+fA+fC+minFee, lockPN.getNr());
+			step = step + this.linklatency;
+			ScheduledUnlock feeAj = new ScheduledUnlock(this.curTime+6*this.linklatency, new Edge(pre, bailout1), step, true, fB+fC+minFee, lockPN.getNr());
+			step = step + this.linklatency;
+			ScheduledUnlock feeji = new ScheduledUnlock(this.curTime+7*this.linklatency, new Edge(bailout1,bailout2), step, true, fB+fC+minBail2, lockPN.getNr());
+			step = step + this.linklatency;
+			ScheduledUnlock feeiC = new ScheduledUnlock(this.curTime+8*this.linklatency, new Edge(bailout2, succ), step, true, fB+fC, lockPN.getNr());
+			step = step + this.linklatency;
+			ScheduledUnlock feeCB = new ScheduledUnlock(this.curTime+9*this.linklatency, new Edge(succ, node), step, true, fB, lockPN.getNr());
+			lockBailout(feeBA); 
+			lockBailout(feeAj); 
+			lockBailout(feeji); 
+			lockBailout(feeiC); 
+			lockBailout(feeCB); 
+			this.timeAdded = this.timeAdded + 5*this.linklatency; //until resolved 
+			this.inBailout.put(new Edge(pre,node), this.curTime + this.timeAdded); 
+			this.inBailout.put(new Edge(node,succ), this.curTime + this.timeAdded); 
+			this.inBailout.put(new Edge(node, pre), this.curTime + this.timeAdded); 
+			this.inBailout.put(new Edge(succ,node), this.curTime + this.timeAdded); 
+			return true; 
+		}
+		
+	}
+	
 	private void lockBailout(ScheduledUnlock lock) {
 		this.qLocks.add(lock);
 		//add to already locked collateral
@@ -186,6 +339,10 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		locked = locked + lock.getVal();
 		if (log) System.out.println("Locked value " + lock.getVal() + "for s=" + lock.getEdge().getSrc() + " t=" + lock.getEdge().getDst()); 
 		this.locked.put(lock.getEdge(), locked);
+		
+		//if (this.feeStrategy == BailoutFee.BUFFER || this.aFeeStrategy == AcceptFee.NEXT) {
+			this.recordPot(lock.getEdge().getSrc(), lock.getEdge().getDst());
+		//}
 	}
 	
 	@Override 
@@ -274,15 +431,83 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		return works; 
 	}
 	
+	private boolean checkPossible(int pre, int succ, int bailout1, int bailout2, double valPBail, 
+			double valBailInter, double valBailS, int node, double valNP, double valSN) {
+		boolean works = (super.isSufficientPot(pre, bailout1, valPBail, -1)==1);
+		works = works & (super.isSufficientPot(bailout1, bailout2, valBailInter, -1)==1); 
+		works = works & (super.isSufficientPot(bailout2, succ, valBailS, -1)==1); 
+		works = works & (super.isSufficientPot(node, pre, valNP, -1)==1); 
+		works = works & (super.isSufficientPot(succ, node, valSN, -1)==1); 
+		return works; 
+	}
+	
 	private double getFeeD(int pre, int succ, int bailout, double val, double timeout, double curVal) {
 		switch (this.feeStrategy) {
 		case NORMAL: return this.params.computeFee(new Edge(bailout, succ), val); 
 		case FACTOR: return this.feeFactor*this.params.computeFee(new Edge(bailout, succ), val);
 		case EXPECTED: return Math.max(this.feeFactor*this.estimateMCFee(pre, succ, bailout, val, true, timeout, curVal), this.params.computeFee(new Edge(bailout, succ), val));
+		case TOTAL: return Math.max(this.params.computeFee(new Edge(bailout, succ), val),
+				this.getTotalFeeTime(bailout, -1, -1, timeout));
+		case TOTALEDGE: return Math.max(this.params.computeFee(new Edge(bailout, succ), val),
+				this.getTotalFeeTime(bailout, pre, succ, timeout));
+		case BUFFER: return Math.max(this.params.computeFee(new Edge(bailout, succ), val),
+				this.getBufferUsed(bailout, pre, succ, val, timeout));
 		default: return Double.MAX_VALUE;
 		}
 	}
 	
+	private double getBufferUsed(int bailout, int pre, int succ, double val, double timeout) {
+		double f = 0;
+		double st = this.curTime - timeout;
+		Edge preE = new Edge(pre, bailout); 
+		Vector<double[]> vecPre = this.potentialHistory.get(preE);
+		double last = vecPre.get(0)[1]; 
+		for (int i = 1; i < vecPre.size(); i++) {
+			double[] pots = vecPre.get(i);
+			if (pots[0]>st) {
+				if (pots[1] < val && (last - pots[1])>0) {
+					f = f + this.params.computeFee(preE, last-pots[1]);
+				}
+			}
+			last = pots[1];
+		}
+		Edge succE = new Edge(bailout,succ); 
+		Vector<double[]> vecSucc = this.potentialHistory.get(preE);
+		last = vecSucc.get(0)[1]; 
+		for (int i = 1; i < vecSucc.size(); i++) {
+			double[] pots = vecSucc.get(i);
+			if (pots[0]>st) {
+				if (pots[1] < val && (last - pots[1])>0) {
+					f = f + this.params.computeFee(succE, last-pots[1]);
+				}
+			}
+			last = pots[1];
+		}
+		return f;
+	}
+
+	private double getTotalFeeTime(int bailout, int pre, int succ, double timeout) {
+		Vector<double[]> vec;
+		if (succ == -1) {
+			vec = this.feeHistory.get(bailout);
+		} else {
+			vec = this.feeHistoryEdge.get(new Edge(bailout,succ));
+		}
+		if (vec == null) {
+		   return 0;
+		} else {
+			double st = this.curTime - timeout;
+			double f = 0;
+			for (int i = 0; i < vec.size(); i++) {
+				double[] pair = vec.get(i);
+				if (pair[0] > st) { //happened recently enough to count for approximation
+					f = f + pair[1];
+				}
+			}
+			return f; 
+		}
+	}
+
 	private double estimateMCFee(int pre, int succ, int node, double val, boolean add, double timeout, double curVal) {
 		Vector<TransactionRecord> recPN = this.getRecordsEdge(pre, node);
 		Vector<TransactionRecord> recNS = this.getRecordsEdge(node, succ);
@@ -504,7 +729,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 			   LockChange ch = new LockChange(lock.getTime() + record.getDuration(), lock.getVal(), e, false, record.isSuccess(),0); 
                changes.add(ch); 
 			} else {
-				LockChange ch = new LockChange(lock.getMaxTime(), lock.getVal(), e, false, false,0); 
+				LockChange ch = new LockChange(lock.getTime() +lock.getMaxTime(), lock.getVal(), e, false, false,0); 
 	               changes.add(ch);
 			}
 		}
@@ -527,6 +752,9 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		case ALWAYS: return true; 
 		case THRESHOLD: return (feeOffer <= this.threshold);
 		case EXPECTED: return (feeOffer <= this.estimateMCFee(pre, succ, node, val, false, timeout, curVal));
+		case TOTAL: return (feeOffer <= this.getTotalFeeTime(node, -1, -1, timeout));
+		case TOTALEDGE: return (feeOffer <= this.getTotalFeeTime(node, pre, succ, timeout));
+		case NEXT: return (feeOffer <= this.params.computeFee(new Edge(node, succ), curVal)+this.getBufferUsed(node, pre, succ, val, timeout));
 		default: return false;
 		}
 	}
@@ -544,12 +772,40 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 	     this.inBailout = new HashMap<Edge, Double>(); 
 	     this.bailoutTime = new double[(int)Math.ceil(this.transactions.length/1000)];
 	     this.bailoutAttTime = new double[(int)Math.ceil(this.transactions.length/1000)];
+			if (this.aFeeStrategy == AcceptFee.TOTAL || this.feeStrategy == BailoutFee.TOTAL) {
+				this.feeHistory = new HashMap<Integer,Vector<double[]>>(); 
+			}
+			if (this.aFeeStrategy == AcceptFee.TOTALEDGE || this.feeStrategy == BailoutFee.TOTALEDGE) {
+				this.feeHistoryEdge = new HashMap<Edge,Vector<double[]>>(); 
+			}
+			//if (this.feeStrategy == BailoutFee.BUFFER || this.aFeeStrategy == AcceptFee.NEXT) {
+				this.potentialHistory = new HashMap<Edge,Vector<double[]>>(); 
+				Node[] nodes = g.getNodes();
+				for (int i = 0; i < nodes.length; i++) {
+					int[] out = nodes[i].getOutgoingEdges();
+					for (int j: out) {
+						Vector<double[]> vec = new Vector<double[]>();
+						vec.add(new double[] {0, this.computePotential(i, j)});
+						this.potentialHistory.put(new Edge(i,j), vec); 
+					}
+				}
+			//}
+	}
+	
+	private void recordPot(int s, int t) {
+		Vector<double[]> vec = this.potentialHistory.get(new Edge(s,t));
+		vec.add(new double[] {this.curTime, this.computePotential(s, t)});
+	}
+	
+	private void recordPot(Edge e) {
+		Vector<double[]> vec = this.potentialHistory.get(e);
+		vec.add(new double[] {this.curTime, this.computePotential(e.getSrc(),e.getDst())});
 	}
 	
 	@Override
 	public Single[] getSingles() {
 		Single[] singles = super.getSingles();
-		Single[] allSingle = new Single[singles.length+10];
+		Single[] allSingle = new Single[singles.length+11];
 		for (int i = 0; i < singles.length; i++) {
 			allSingle[i] = singles[i]; 
 		}
@@ -564,6 +820,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		Single bfn = new Single(this.key + "_BAILOUT_NOT_ACCEPTED", this.bailnot);
 		Single bnf = new Single(this.key + "_BAILOUT_NOT_FOUND", this.foundnot);
 		Single ball = new Single(this.key + "_BAILOUT_ATTEMPTS", this.foundnot + this.bailnot + this.bailouts);
+		Single gini = new Single(this.key + "_GINI", this.gini);
 		int index = singles.length;
 		allSingle[index++] = f1; 
 		allSingle[index++] = f2; 
@@ -575,6 +832,7 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		allSingle[index++] = bfn;
 		allSingle[index++] = bnf;
 		allSingle[index++] = ball; 
+		allSingle[index++] = gini; 
 
 		return allSingle; 
 	}
@@ -586,7 +844,20 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 				this.key+"_ATTEMPTED_BAILOUT_TIME", folder);
 		succ &= DataWriter.writeWithIndex(this.bailoutTime,
 				this.key+"_BAILOUT_TIME", folder);
+		succ &= DataWriter.writeWithIndex(this.feeGained,
+				this.key+"_FEE_DISTRIBUTION", folder);
+		succ &= DataWriter.writeWithIndex(this.feeGainedBailout,
+				this.key+"_FEE_DISTRIBUTION_BAILOUT", folder);
 		return succ; 
+	}
+	
+	@Override
+	public boolean lock(int s, int t, double v, int nr, double maxlock) {
+		boolean b = super.lock(s, t, v, nr, maxlock);
+		//if (this.feeStrategy == BailoutFee.BUFFER || this.aFeeStrategy == AcceptFee.NEXT) {
+			this.recordPot(s, t);
+		//}
+		return b; 
 	}
 	
 	@Override 
@@ -595,10 +866,34 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		
 		//fee part
 	    int s = lock.getEdge().getSrc();
-	    if (this.transactions[lock.getNr()].getSrc() != s) { //source does not take fees 
+	    if (this.transactions[lock.getNr()].getSrc() != s && lock.isSuccess()) { //source does not take fees 
 	    	double fee = this.params.computeFee(lock.getEdge(), lock.getVal()); 
 	    	this.feeGained[s] = this.feeGained[s] + fee; 
+	    	if (this.aFeeStrategy == AcceptFee.TOTAL || this.feeStrategy == BailoutFee.TOTAL) {
+	    	    Vector<double[]> vec = this.feeHistory.get(s);
+	    	    if (vec == null) {
+	    	    	vec = new Vector<double[]>(); 
+	    	    	this.feeHistory.put(s, vec);
+	    	    }
+	    	    vec.add(new double[] {lock.getTime(), fee});
+	    	}
+	    	if (this.aFeeStrategy == AcceptFee.TOTALEDGE || this.feeStrategy == BailoutFee.TOTALEDGE) {
+	    	    Vector<double[]> vec = this.feeHistoryEdge.get(lock.getEdge());
+	    	    if (vec == null) {
+	    	    	vec = new Vector<double[]>(); 
+	    	    	this.feeHistoryEdge.put(lock.getEdge(), vec);
+	    	    }
+	    	    vec.add(new double[] {lock.getTime(), fee});
+	    	}
 	    }
+	    //if (this.feeStrategy == BailoutFee.BUFFER || this.aFeeStrategy == AcceptFee.NEXT) {
+	    	if (!lock.isSuccess()) {//failed payment -> more capcity on this side
+	    		this.recordPot(lock.getEdge());
+	    	} else {
+	    		this.recordPot(lock.getEdge().getDst(),s); //successful payment -> more capacity on opposite side 
+	    	}
+	    	
+	   // }
 	}
 	
 	@Override
@@ -606,17 +901,29 @@ public class RoutePaymentBailout extends RoutePaymentConcurrent{
 		//compute final stats
 		super.postprocess();
 		//bailout fee
-		Arrays.parallelSort(this.feeGainedBailout);
-		this.feeMedianBail = this.feeGainedBailout[Math.floorDiv(this.feeGainedBailout.length, 2)]; 
-		this.feeQ1Bail = this.feeGainedBailout[Math.floorDiv(this.feeGainedBailout.length, 4)]; 
-		this.feeQ3Bail = this.feeGainedBailout[Math.floorDiv(3*this.feeGainedBailout.length, 4)]; 
-		this.feeMinBail = this.feeGainedBailout[0];
-		this.feeMaxBail = this.feeGainedBailout[this.feeGainedBailout.length-1]; 
+		double[] sort = this.feeGainedBailout.clone(); 
+		Arrays.parallelSort(sort);
+		this.feeMedianBail = sort[Math.floorDiv(this.feeGainedBailout.length, 2)]; 
+		this.feeQ1Bail = sort[Math.floorDiv(this.feeGainedBailout.length, 4)]; 
+		this.feeQ3Bail = sort[Math.floorDiv(3*this.feeGainedBailout.length, 4)]; 
+		this.feeMinBail = sort[0];
+		this.feeMaxBail = sort[this.feeGainedBailout.length-1]; 
 		this.feeMeanBail = 0;
 		for (int i = 0; i < this.feeGainedBailout.length; i++) {
 			this.feeMeanBail = this.feeMeanBail + this.feeGainedBailout[i];
 		}
 		this.feeMeanBail = this.feeMeanBail/this.feeGainedBailout.length; 
+		this.gini = 0;
+		double av = 0;
+		for (int i = 0; i < this.feeGained.length; i++) {
+			double fi = this.feeGained[i] + this.feeGainedBailout[i];
+			av = av + fi;
+			for (int j = 0; j < this.feeGained.length; j++) {
+				gini = gini + Math.abs(fi-this.feeGained[j] - this.feeGainedBailout[j]); 
+			}
+		}
+		gini = gini/(2*av*this.feeGained.length);  
+		
 	}
 	
 	

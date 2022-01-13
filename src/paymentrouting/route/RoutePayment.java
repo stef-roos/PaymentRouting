@@ -490,12 +490,13 @@ public class RoutePayment extends Metric{
 				}
 				
 				//fees
-				Arrays.parallelSort(this.feeGained);
-				this.feeMedian = this.feeGained[Math.floorDiv(this.feeGained.length, 2)]; 
-				this.feeQ1 = this.feeGained[Math.floorDiv(this.feeGained.length, 4)]; 
-				this.feeQ3 = this.feeGained[Math.floorDiv(3*this.feeGained.length, 4)]; 
-				this.feeMin = this.feeGained[0];
-				this.feeMax = this.feeGained[this.feeGained.length-1]; 
+				double[] sort = this.feeGained.clone(); 
+				Arrays.parallelSort(sort);
+				this.feeMedian = sort[Math.floorDiv(this.feeGained.length, 2)]; 
+				this.feeQ1 = sort[Math.floorDiv(this.feeGained.length, 4)]; 
+				this.feeQ3 = sort[Math.floorDiv(3*this.feeGained.length, 4)]; 
+				this.feeMin = sort[0];
+				this.feeMax = sort[this.feeGained.length-1];
 				this.feeMean = 0;
 				for (int i = 0; i < this.feeGained.length; i++) {
 					this.feeMean = this.feeMean + this.feeGained[i];

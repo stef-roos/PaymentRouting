@@ -16,12 +16,14 @@ import paymentrouting.datasets.TransactionRecord;
 import paymentrouting.route.PartialPath;
 import paymentrouting.route.PathSelection;
 import paymentrouting.route.RoutePayment;
+import paymentrouting.sourcerouting.LND;
 import treeembedding.credit.Transaction;
 
 public class RoutePaymentConcurrent extends RoutePayment {
 	protected double linklatency; //link latency in ms
 	//double now = 0; 
-	int curT; 
+	public int curT; 
+	protected int curSource; 
     protected PriorityQueue<ConcurrentTransaction> qTr; 
 	protected HashMap<Integer, Vector<PartialPath>> ongoingTr; 
 	protected HashMap<Edge, Double> locked; 
@@ -29,6 +31,8 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	protected HashMap<Edge,HashMap<Integer,ScheduledUnlock>> preScheduled;
 	protected HashMap<Edge,Double> lastTime;
 	protected double curTime; 
+	protected HashMap<Edge,Vector<double[]>> potentialHistory;
+
 	protected double timeAdded=0; 
 	String rec; 
 	protected HashMap<Integer, HashMap<Integer,TransactionRecord>> records;
@@ -56,6 +60,11 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		super(ps, trials, true, epoch, extendLatParam(latency, moreParams));
 		this.linklatency = latency; 
 		this.rec = recordFile; 
+	}
+	
+	public RoutePaymentConcurrent(PathSelection ps, int trials, double latency, Parameter[] moreParams) {
+		super(ps, trials, true, extendLatParam(latency, moreParams));
+		this.linklatency = latency; 
 	}
 	
 	public static Parameter[] extendLatParam(double latency, Parameter[] params) {
@@ -95,6 +104,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   //take a transaction, process all unlocks before, check if final or new (final for all paths = last node receiver or -1 indicating failure)
 		   ConcurrentTransaction cur = qTr.poll();
 		   this.curT = cur.getNr(); 
+		   this.curSource = cur.getSrc(); 
 		   curTime = cur.getTime(); 
 		   if (log) System.out.println("Step forward on tx " + this.curT + " at time " + curTime); 
 		   this.unlockAllUntil(curTime);
@@ -229,6 +239,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
             	   res.add(-1);
             	   next.add(new PartialPath(-1, pp.val, 
       						res,pp.reality));
+            	   
                }
            } 
 		   //update entry in ongoingTr, add new next event in qTr
@@ -327,6 +338,11 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		double locked = this.locked.get(lock.edge);
 		locked = locked - lock.val; 
 		if (locked < -0.0000001) {
+			Vector<double[]> vec = this.potentialHistory.get(lock.edge);
+			for (int i = 0; i < vec.size(); i++) {
+				double[] ch = vec.get(i);
+				System.out.println(ch[0] + " " + ch[1]); 
+			}
 			throw new IllegalArgumentException("less than zero logged collateral " + locked); 
 		}
 		this.locked.put(lock.edge, locked);
@@ -580,5 +596,12 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		
 	}
 	
+    public int getCurSource() {
+		return curSource;
+	}
+	
+	public double getCurTime() {
+		return curTime;
+	}
 }
 

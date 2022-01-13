@@ -9,6 +9,7 @@ import gtna.graph.Edge;
 import gtna.graph.Node;
 import paymentrouting.datasets.LNParams;
 import paymentrouting.route.RoutePayment;
+import paymentrouting.route.concurrency.RoutePaymentConcurrent;
 import paymentrouting.route.fee.PathFee;
 import treeembedding.credit.CreditLinks;
 
@@ -75,6 +76,9 @@ public class Dijkstra {
 							addFee = false; 
 						} 
 							//add neigh to queue, compute fees 
+						   if (cf instanceof LND && rp instanceof RoutePaymentConcurrent) {
+							   ((LND) cf).setObserver(src, ((RoutePaymentConcurrent)rp).getCurTime());
+						   }
 						    double potCost = minCost[node] + cf.compute(neigh, node, toroute, edgeweights, par, !addFee);
 						    if (minCost[neigh] != -1 && potCost >= minCost[neigh]) {
 						    	continue;  

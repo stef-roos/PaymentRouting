@@ -1,5 +1,6 @@
 package paymentrouting.sourcerouting;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
@@ -68,6 +69,14 @@ public class LND extends SourceStep implements CostFunction{
 	      return Double.MAX_VALUE;
 	    return 100d / (A_PRIORI_PROB * (1 - 1 / (Math.pow(2, deltaHours))));
 	  }
+	  
+		public void initRoutingInfo(Graph g, Random rand) {
+			super.initRoutingInfo(g, rand);
+			this.lastFailure = new Map[g.getNodes().length];
+			for (int i = 0; i < this.lastFailure.length; i++) {
+				this.lastFailure[i] = new HashMap<Integer, Double>();
+			}
+		}
 
 
 	  public void init(Map[] lastFailure) {
@@ -77,6 +86,10 @@ public class LND extends SourceStep implements CostFunction{
 	  public void setObserver(int observer, double time) {
 	    this.observer = observer;
 	    this.time = time;
+	  }
+	  
+	  public void updateFailure(int observer, double time, Edge e) {
+		  this.lastFailure[observer].put(e, time); 
 	  }
 
 	@Override

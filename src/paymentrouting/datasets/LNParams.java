@@ -106,12 +106,19 @@ public class LNParams extends GraphProperty {
     Random r = new Random();
     this.params = new HashMap<Edge, double[]>();
     for (Edge e: g.getEdges().getEdges()) {
-      double base = r.nextDouble() * 1000;
-      double rate = r.nextDouble();
-      double delay = r.nextDouble() * 144;
-      double age = r.nextDouble() * 130139;
-      double lastFailure = r.nextDouble() * 4.876602889808817;
-      this.params.put(e, new double[]{base, rate, delay, age, lastFailure});
+      double base = 0;
+      double p = r.nextDouble();
+      if (p >= 0.5) {
+    	  base = 1; 
+      } 
+      p = r.nextDouble();
+      double rate = 0.000001;
+      if (p > 0.25) {
+    	  double pdash = (p-0.25)/0.75;
+    	  rate = -0.000001 * (4*Math.log(1-pdash)); 
+      }
+      double delay = 144;
+      this.params.put(e, new double[]{base, rate, delay});
     }
     return this;
   }

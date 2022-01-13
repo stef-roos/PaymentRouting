@@ -81,6 +81,10 @@ public abstract class SourceStep extends PathSelection {
 			double nval = (curVal - base)/(1+rate);
 			int res = rp.isSufficientPot(cur, succ, nval, pre);
 			if (res == -1) { //not enough potential	
+				//update failure for LND 
+         	   if (this instanceof LND && rp instanceof RoutePaymentConcurrent) {
+         		   ((LND)this).updateFailure(((RoutePaymentConcurrent)rp).getCurSource(), ((RoutePaymentConcurrent)rp).getCurTime(), e);
+         	   }
 				return null; 
 			}
 			int[] out = g.getNodes()[cur].getOutgoingEdges();
