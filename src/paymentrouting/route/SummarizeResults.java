@@ -11,9 +11,13 @@ import java.util.Arrays;
 public class SummarizeResults {
 	public static String path = "";
 	
-	public static void main(String[] args) {
-		System.out.println(1280/1.5); 
-        //dynConcurrent("SUCCESS="); 
+	/**
+	 * arrange results in tables for paper/plots  
+	 * @param args
+	 */
+	
+	public static void main(String[] args) { 
+        dynConcurrent("SUCCESS="); 
 //		String[][] singles = {{"SUCCESS=", "succ"},
 //				              {"MES_AV=", "mes"},
 //		                      {"MES_AV_SUCC=", "mesSucc"}};
@@ -26,6 +30,10 @@ public class SummarizeResults {
 //		}
 	}
 	
+	/**
+	 * Table 1, run with single = "SUCCESS="
+	 * @param single
+	 */
 	public static void dynConcurrent(String single) {
 		String[] vals = {"25.0", "100.0"};
 		String[] rates = {"0.1", "0.5", "1.0", "2.0"};
@@ -54,6 +62,11 @@ public class SummarizeResults {
 		}
 	}
 	
+	/**
+	 * Figure 6, run with single="SUCCCESS=" and name "succ" to generate file path + "attack" + name + ".txt" 
+	 * @param single
+	 * @param name
+	 */
 	public static void resAttacks(String single, String name) {
 		String[] attack = new String[]{"NON_COLLUDING_DROP_SPLITS", "COLLUDING_DROP_SPLITS"}; 
 		String[] attackName = new String[]{"non-coll", "coll"};
@@ -96,6 +109,12 @@ public class SummarizeResults {
 		}
 	}
 	
+	/**
+	 * Figure 10, run with single="SUCCCESS=" and name "succ" to generate files path+"locks"+algosName[i]+name+".txt", 
+	 * with algosName = { "No", "Dist", "IfN"}, i.e., the different splitting methods 
+	 * @param single
+	 * @param name
+	 */
 	public static void resLocks(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
@@ -153,6 +172,11 @@ public class SummarizeResults {
 		
 	}
 	
+	/**
+	 * Figure 7b, run with single="SUCCCESS=" and name "succ" to generate file with results of BA and ER graphs 
+	 * @param single
+	 * @param name
+	 */
 	public static void resTopologyNew(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
@@ -198,51 +222,12 @@ public class SummarizeResults {
 		
 	}
 	
-	public static void resTopology(String single, String name) {
-		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
-		String[] algosName = { "No", "Dist", "IfN"};
-		String[] dist = new String[] { "HOP_DISTANCE", "SPEEDYMURMURS_MULTI_5" };
-		String[] distances = { "HOP", "INT-SM" };
-		String[] path = {"BARABASI_ALBERT-6329-5--LARGEST_WEAKLY_CONNECTED_COMPONENT--INIT_CAPACITIES-200.0-EXP--TRANSACTIONS-100.0-EXP-false-10000-false-true",
-				         "ERDOS_RENYI-6329-10.31-true--LARGEST_WEAKLY_CONNECTED_COMPONENT--INIT_CAPACITIES-200.0-EXP--TRANSACTIONS-100.0-EXP-false-10000-false-true",
-				         "READABLE_FILE_LIGHTNING-6329--INIT_CAPACITIES-200.0-EXP--TRANSACTIONS-100.0-EXP-false-10000-false-true"};
-		String[] graphName = {"BA", "ER", "LN"};
-
-		try {
-			BufferedWriter bw = new BufferedWriter(
-					new FileWriter(path+"Topology" + name + ".txt"));
-			String line = "#distri";
-			// get names
-			for (int d = 0; d < distances.length; d++) {
-				for (int a = 0; a < algos.length; a++) {
-					line = line + "	" + distances[d] + "-" + algosName[a];
-				}
-			}
-			bw.write(line);
-			for (int i = 0; i < path.length; i++) {
-				line = graphName[i];
-				// get results
-				for (int d = 0; d < distances.length; d++) {
-					for (int a = 0; a < algos.length; a++) {
-						double[] r = getSingleVar("data/lightning-nopadding/"
-								+ path[i]+ "/" + algos[a] + "-1-false-" + dist[d]
-								+ "/_singles.txt", single);
-						line = line + "	" + r[0] + "	" + r[1];
-					}
-				}
-				bw.newLine();
-				bw.write(line);
-
-			}
-			bw.flush();
-			bw.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
 	
+	/**
+	 * Figure 7a, run with single="SUCCCESS=" and name "succ" 
+	 * @param single
+	 * @param name
+	 */
 	public static void resCapTrans(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
@@ -287,6 +272,11 @@ public class SummarizeResults {
 		
 	}
 	
+	/**
+	 * Figure 8, run with single,name={"SUCCESS=", "succ"}, {"MES_AV=", "mes"},	{"MES_AV_SUCC=", "mesSucc"} for 8a), b), c)
+	 * @param single
+	 * @param name
+	 */
 	public static void resVals(String single, String name) {
 		String[] algos = new String[] { "CLOSEST_NEIGHBOR", "SPLIT_CLOSEST", "SPLIT_IFNECESSARY"};
 		String[] algosName = { "No", "Dist", "IfN"};
@@ -330,6 +320,11 @@ public class SummarizeResults {
 		
 	}
 	
+	/**
+	 * Figure 9, run with single="SUCCCESS=" and name "succ" 
+	 * @param single
+	 * @param name
+	 */
 	public static void resTrees(String single, String name) {
 		String[] algos = new String[] {
 				"CLOSEST_NEIGHBOR",

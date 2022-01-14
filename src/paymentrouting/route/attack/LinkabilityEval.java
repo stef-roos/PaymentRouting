@@ -27,8 +27,11 @@ import paymentrouting.route.concurrency.RoutePaymentConcurrent;
 
 public class LinkabilityEval {
 
+	/**
+	 * generates Figure 4 
+	 * @param args
+	 */
 	public static void main(String[] args) {
-		printResults(); System.exit(0);
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/linkability/");
 		Config.overwrite("SERIES_GRAPH_WRITE", ""+false);
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
@@ -36,15 +39,15 @@ public class LinkabilityEval {
 		int trs = 100;
 		double[] trval = {25,100};
 		double initCap = 200;
-		double[] freq = {120/(double)6329,6*120/(double)6329,60*120/(double)6329,600*120/(double)6329};
-		int[] delay = {0,3,12};
-		double[] fraction = {0.01, 0.1, 0.5};
+		double[] freq = {120/(double)6329,6*120/(double)6329,60*120/(double)6329,600*120/(double)6329}; //frequency of transactions
+		int[] delay = {0,3,12}; //waiting time t for how long linked 
+		double[] fraction = {0.01, 0.1, 0.5}; //fraction malicious parties 
 		int trees = 5;
 		for (int i = 0; i < freq.length; i++) {
 					runPerc(runs, trs, trval[0], initCap, freq[i], delay, fraction, trees);
 					runPerc(runs, trs, trval[1], initCap, freq[i], delay, fraction, trees);
 		}
-		
+		printResults();
 
 	}
 	

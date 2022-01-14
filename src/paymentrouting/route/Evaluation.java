@@ -27,9 +27,62 @@ public class Evaluation {
 	 */
 
 	public static void main(String[] args) {
-		dynamicConcurrentEval(); 
+		
 	}
 	
+	
+	/**
+	 * dynamic Eval, Figure 2
+	 */
+	public static void dynamicEval() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/dynComp/");
+		int init = 200; 
+		int[] trval = {100};
+		int runs = 10;
+		int trs = 1000000;
+		int[] trees = {5}; 
+		TransDist td = TransDist.EXP;
+		BalDist bd = BalDist.EXP;
+		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
+		for (int i = 0; i < trval.length; i++) {
+			dynamic(init, trval[i], 20, 
+					trs, trees, td, bd, file); 
+		}
+	}
+	
+	
+	/**
+	 * dynamic with concurrency, Table 1
+	 */
+	public static void dynamicConcurrentEval() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/con-lightning/");
+		int init = 200; 
+		int[] trval = {100, 25};
+		int runs = 10;
+		int trs = 1000000;
+		int[] trees = {5}; 
+		double[] lat = {0.1};
+		double[] trh = {100}; 
+		TransDist td = TransDist.EXP;
+		BalDist bd = BalDist.EXP;
+		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
+		for (int j = 0; j < lat.length; j++) {
+			for (int k =0; k < trh.length; k++) {
+				for (int i = 0; i < trval.length; i++) {
+			        dynamicConcurrent(init, trval[i], runs, 
+					trs, trees, td, bd, file, lat[j], trh[k]);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * evaluation of attack: Figure 6 
+	 */
 	public static void attackEval() {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
@@ -71,28 +124,79 @@ public class Evaluation {
 		Series.generate(net, m, runs);
 	}
 	
-	public static void dynamicEval() {
+	/**
+	 * Impact of topology, Figure 7b 
+	 */
+	public static void topologyEval() {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
-		Config.overwrite("SERIES_GRAPH_WRITE", ""+false);
-		Config.overwrite("MAIN_DATA_FOLDER", "./data/dynComp/");
-//		int init = 200; 
-//		int[] trval = {10,100};
-//		int runs = 20;
-//		int trs = 1000000;
-//		int[] trees = {1,3,5}; 
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/check-changes/");
 		int init = 200; 
-		int[] trval = {100};
-		int runs = 10;
-		int trs = 1000000;
-		int[] trees = {5}; 
+		int trval = 100;
+		int runs = 20;
+		int nodes = 6329;
+		int trs = 10000;
+		int[] trees = {1,2,3,4,5,6,7,8,9,10}; 
 		TransDist td = TransDist.EXP;
 		BalDist bd = BalDist.EXP;
+		double deg = 10.31;
+		runTopologyNoRand(init, trval, runs, nodes, trs, trees, td, bd,true,deg); 
+		runTopologyNoRand(init, trval, runs, nodes, trs, trees, td, bd,false,deg);
+	}
+	
+	/**
+	 * impact of number of trees/embeddings, distribution and payment amount; Figure 7a + 8 + 9
+	 */
+	public static void evalValTrees() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/lighting-nopadding/");
+        
+        int[] trees = {1,2,3,4,5,6,7,8,9,10}; 
+        int[] vals = {1, 5, 20, 50, 100, 200, 300};
+		int trs = 10000; 
+
 		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
-		for (int i = 0; i < trval.length; i++) {
-			dynamic(init, trval[i], 20, 
-					trs, trees, td, bd, file); 
+		for (int i = 0; i < vals.length; i++) {
+                 if (vals[i] == 1 || vals[i] == 50 || vals[i] == 200) {
+                	 runLightningIntDim(200, vals[i], 20, 
+              				trs, trees, TransDist.EXP, BalDist.EXP, file); 
+                 } else {
+                	 runLightningIntDimNoRand(200, vals[i], 20, 
+               				trs, trees, TransDist.EXP, BalDist.EXP, file);  
+                 }
+			     if (vals[i] == 100) {
+            	 runLightningIntDimNoRand(200, vals[i], 20, 
+         				trs, trees, TransDist.EXP, BalDist.NORMAL, file); 
+            	 runLightningIntDimNoRand(200, vals[i], 20, 
+          				trs, trees, TransDist.NORMAL, BalDist.EXP, file); 
+            	 runLightningIntDimNoRand(200, vals[i], 20, 
+           				trs, trees, TransDist.NORMAL, BalDist.NORMAL, file); 
+			     }
+             
 		}
 	}
+	
+	/**
+	 * evaluation of timeouts, Figure 10 
+	 */
+	public static void locksEval() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/locks-nopadding/");
+		int init = 200; 
+		int trval = 100;
+		int runs = 20;
+		int trs = 10000;
+		int[] trees = {1,2,3,4,5,6,7,8,9,10}; 
+		TransDist td = TransDist.EXP;
+		BalDist bd = BalDist.EXP;
+		lightningLocks(init, trval, runs, trs, trees, td, bd,"lightning/lngraph_2020_03_01__04_00.graph"); 
+	}
+	
+	/**
+	 * Remainder of class: individual configurations called by the eval functions, which generated results for the evaluation 
+	 */
 	
 	public static void dynamic(int initCap, int trval, int runs, 
 			int trs, int[] trees, TransDist td, BalDist bd, String file) {
@@ -121,30 +225,6 @@ public class Evaluation {
 		Series.generate(net, m, runs);
 	}	
 	
-	public static void dynamicConcurrentEval() {
-		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
-		Config.overwrite("SERIES_GRAPH_WRITE", ""+false);
-		Config.overwrite("MAIN_DATA_FOLDER", "./data/con-lightning/");
-		int init = 200; 
-		int[] trval = {100, 25};
-		int runs = 10;
-		int trs = 1000000;
-		int[] trees = {5}; 
-		double[] lat = {0.1};
-		double[] trh = {100}; 
-		TransDist td = TransDist.EXP;
-		BalDist bd = BalDist.EXP;
-		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
-		for (int j = 0; j < lat.length; j++) {
-			for (int k =0; k < trh.length; k++) {
-				for (int i = 0; i < trval.length; i++) {
-			        dynamicConcurrent(init, trval[i], runs, 
-					trs, trees, td, bd, file, lat[j], trh[k]);
-				}
-			}
-		}
-	}
-	
 	public static void dynamicConcurrent(int initCap, int trval, int runs, 
 			int trs, int[] trees, TransDist td, BalDist bd, String file, double latency, double trh) {
 		Transformation[] trans = new Transformation[] {
@@ -171,19 +251,7 @@ public class Evaluation {
 		Series.generate(net, m, runs);
 	}
 	
-	public static void locksEval() {
-		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
-		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
-		Config.overwrite("MAIN_DATA_FOLDER", "./data/locks-nopadding/");
-		int init = 200; 
-		int trval = 100;
-		int runs = 20;
-		int trs = 10000;
-		int[] trees = {1,2,3,4,5,6,7,8,9,10}; 
-		TransDist td = TransDist.EXP;
-		BalDist bd = BalDist.EXP;
-		lightningLocks(init, trval, runs, trs, trees, td, bd,"lightning/lngraph_2020_03_01__04_00.graph"); 
-	}
+
 	
 	public static void lightningLocks(int initCap, int trval, int runs, 
 			int trs, int[] trees, TransDist td, BalDist bd, String file) {
@@ -213,22 +281,7 @@ public class Evaluation {
 		Series.generate(net, m, runs); 		
 	}
 	
-	public static void topologyEval() {
-		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
-		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
-		Config.overwrite("MAIN_DATA_FOLDER", "./data/check-changes/");
-		int init = 200; 
-		int trval = 100;
-		int runs = 20;
-		int nodes = 6329;
-		int trs = 10000;
-		int[] trees = {1,2,3,4,5,6,7,8,9,10}; 
-		TransDist td = TransDist.EXP;
-		BalDist bd = BalDist.EXP;
-		double deg = 10.31;
-		runTopologyNoRand(init, trval, runs, nodes, trs, trees, td, bd,true,deg); 
-		runTopologyNoRand(init, trval, runs, nodes, trs, trees, td, bd,false,deg);
-	}
+	
 	
 	public static void runTopologyNoRand(int initCap, int trval, int runs, int nodes, 
 			int trs, int[] trees, TransDist td, BalDist bd, boolean ba, double deg) {
@@ -264,36 +317,7 @@ public class Evaluation {
 		Series.generate(net, m, runs); 		
 	}
 	
-	public static void evalValTrees() {
-		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
-		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
-		Config.overwrite("MAIN_DATA_FOLDER", "./data/lighting-nopadding/");
-        
-        int[] trees = {1,2,3,4,5,6,7,8,9,10}; 
-       // int[] vals = {1, 5, 20, 50, 100, 200, 300};
-        int[] vals = {20};
-		int trs = 10000; 
 
-		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
-		for (int i = 0; i < vals.length; i++) {
-                 if (vals[i] == 1 || vals[i] == 50 || vals[i] == 200) {
-                	 runLightningIntDim(200, vals[i], 20, 
-              				trs, trees, TransDist.EXP, BalDist.EXP, file); 
-                 } else {
-                	 runLightningIntDimNoRand(200, vals[i], 20, 
-               				trs, trees, TransDist.EXP, BalDist.EXP, file);  
-                 }
-			     if (vals[i] == 100) {
-            	 runLightningIntDimNoRand(200, vals[i], 20, 
-         				trs, trees, TransDist.EXP, BalDist.NORMAL, file); 
-            	 runLightningIntDimNoRand(200, vals[i], 20, 
-          				trs, trees, TransDist.NORMAL, BalDist.EXP, file); 
-            	 runLightningIntDimNoRand(200, vals[i], 20, 
-           				trs, trees, TransDist.NORMAL, BalDist.NORMAL, file); 
-			     }
-             
-		}
-	}
 	
 	public static void runLightningIntDimNoRand(int initCap, int trval, int runs, 
 			int trs, int[] trees, TransDist td, BalDist bd, String file) {
