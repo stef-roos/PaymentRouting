@@ -107,7 +107,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   this.curSource = cur.getSrc(); 
 		   curTime = cur.getTime(); 
 		   if (log) System.out.println("Step forward on tx " + this.curT + " at time " + curTime); 
-		   this.unlockAllUntil(curTime);
+		   this.unlockAllUntil(curTime, g);
 		   Vector<PartialPath> vec = this.ongoingTr.get(cur.getNr()); 
 		   if (vec != null) {
 		      boolean[] state = this.checkFinal(vec, cur.getDst());
@@ -248,7 +248,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   ongoingTr.put(cur.getNr(),next);
 		   qTr.add(cur); 
 		 } 
-		 this.unlockAllUntil(Double.MAX_VALUE);
+		 this.unlockAllUntil(Double.MAX_VALUE, g);
 	 }
 	 
 	 /**
@@ -262,6 +262,13 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 protected boolean agree(int curN, double val, double curTime) {
 		return true;
 	}
+	 
+	 /**
+	  * possibility to run stats on start of last transaction (for bailout count)
+	  */
+	 protected void runLast(Graph g) {
+			
+		} 
 
 
 	/**
@@ -367,7 +374,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 * unlocking all scheduled locks until time limit
 	 * @param limit
 	 */
-	public void unlockAllUntil(double limit) {
+	public void unlockAllUntil(double limit, Graph g) {
 		ScheduledUnlock lock = this.qLocks.peek();
 		while (lock != null && lock.time <= limit) {
 			if (log) System.out.println("Remove lock of " + lock.nr + " on edge " + lock.edge + " at time " + lock.time); 
