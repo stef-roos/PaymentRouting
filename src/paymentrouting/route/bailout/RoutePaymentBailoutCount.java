@@ -9,6 +9,8 @@ import gtna.data.Single;
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import gtna.graph.Node;
+import gtna.io.DataWriter;
+import gtna.util.Distribution;
 import gtna.util.parameter.DoubleParameter;
 import gtna.util.parameter.Parameter;
 import gtna.util.parameter.StringParameter;
@@ -21,27 +23,32 @@ import paymentrouting.route.concurrency.ScheduledUnlock;
 public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 	PaymentReaction react;
 	LNParams params; 
-	double successfulBail; 
-	double failedBail;
-	double failedBailSrc;
+	int successfulBail; 
+	int failedBail;
+	int failedBailSrc;
 	int noBailNode;
-	double noNeedtoBail;
-	double successChannelBail;
-	double failedChannelBail;
-	int noChannelBailNode; 
-	double noChannelNeedtoBail; 
-	long[] bailoutNumber; 
-	long[] bailoutNumberSucc; 
+	int noNeedtoBail;
+	Distribution bailoutNumber; 
+	Distribution bailoutNumberSucc;
+	
 	double wait;
 	double bailoutTime=-1; //time all bailout
-	
+	boolean done = false; 
 	
 
 
 	public RoutePaymentBailoutCount(PathSelection ps, int trials, double latency, String recordFile, PaymentReaction react, double wait) {
 		super(ps, trials, latency, recordFile,
 				new Parameter[] {new StringParameter("PAYMENT_REACTION", react.getName()), 
-						 new DoubleParameter("WAIT", wait)});
+						 new DoubleParameter("WAITING", wait)});
+		this.react = react; 
+		this.wait = wait;
+	}
+	
+	public RoutePaymentBailoutCount(PathSelection ps, int trials, double latency, PaymentReaction react, double wait) {
+		super(ps, trials, latency, 
+				new Parameter[] {new StringParameter("PAYMENT_REACTION", react.getName()), 
+						 new DoubleParameter("WAITING", wait)});
 		this.react = react; 
 		this.wait = wait;
 	}
@@ -53,17 +60,22 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 		failedBailSrc = 0; 
 		noBailNode = 0;
 		noNeedtoBail = 0;
-		successChannelBail = 0; 
-		failedChannelBail = 0;
-		noChannelBailNode = 0;
-		noChannelNeedtoBail = 0;
-		this.bailoutNumberSucc = new long[0];
-		this.bailoutNumber = new long[0];
+		long[] bailoutNS = new long[0];
+		long[] bailoutN = new long[0];
 		
 		
 		Node[] nodes = g.getNodes();
 		int included = 0; 
+		Iterator<ScheduledUnlock> it = this.qLocks.iterator();
+		if (log) {
+		while (it.hasNext()) {
+			ScheduledUnlock lock = it.next();
+			System.out.println(lock.getEdge().getSrc() + " " + lock.getEdge().getDst() + " " + lock.getStartTime() + " " + 
+			lock.getTime() + " " + lock.getMaxTime()); 
+		}
+		}
 		for (int i = 0; i < nodes.length; i++) {
+			if (log) System.out.println("Node " + i);
 			HashMap<Edge,Double> reducedCap = new HashMap<Edge,Double>(); 
 			int bails = 0; 
 			boolean succ = true;
@@ -75,20 +87,17 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 				bails = bails + edgeLocks.size();
 				for (int j = 0; j < edgeLocks.size(); j++) {
 					ScheduledUnlock[] l = edgeLocks.get(j);
-					//if node is sender of lock -> exclude as impossible  
+					//if node is sender of lock -> no need to bil out of this one 
 					if (l[0] == null) {
-						exclude = true;
-						failedBailSrc++;
-						succ = false; 
-						break; 
+						continue; 
 					} else {
 						//if intermediary -> find loops with two edges 
 						int length = 3;
 						boolean foundLoop = false; 
 						boolean solved = false;
 						double val = l[0].getVal();
-						while (length <= 6 && !solved) {
-						       Vector<Vector<Edge>> loops = getLoops(l[0].getEdge(), l[1].getEdge(), length, g);
+						while (length <= 5 && !solved) {
+						       Vector<Vector<Edge>> loops = getLoops(l[0].getEdge(), l[1].getEdge(), length-2, g);
 						       if (loops.size() == 0) {
 						    	   length++;
 						    	   continue;
@@ -100,7 +109,10 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 						    		   double cap = Double.MAX_VALUE; 
 						    		   for (int m = 0; m < loop.size(); m++) {
 						    			   Edge em = loop.get(m); 
-						    			   double x = reducedCap.get(em);
+						    			   Double x = reducedCap.get(em);
+						    			   if (x == null) {
+						    				   x = 0.0;  
+						    			   }
 						    			   cap = Math.min(cap, this.computePotential(em.getSrc(), em.getDst())-x);
 						    		   }
 						    		   if (cap > 0) {
@@ -108,7 +120,10 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 						    			   double assign = Math.min(cap, val);
 						    			   for (int m = 0; m < loop.size(); m++) {
 							    			   Edge em = loop.get(m); 
-							    			   double x = reducedCap.get(em);
+							    			   Double x = reducedCap.get(em);
+							    			   if (x == null) {
+							    				   x = 0.0;  
+							    			   }
 							    			   x = x + assign;
 							    			   reducedCap.put(em,x);
 							    		   }
@@ -120,11 +135,13 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 						    		   }
 						    	   }
 						       }
+						       length++; 
 						}
 						if (!foundLoop) {
 							exclude = true;
 							succ = false; 
 							this.noBailNode++; 
+							if (log) System.out.println("no node");
 							break; 
 						}
 						if (!solved) {
@@ -138,20 +155,26 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 				//exclude nodes that did not need bailouts
 				exclude = true;
 				this.noNeedtoBail++; 
+				if (log) System.out.println("no need");
 			}
 			if (!exclude) {
 				included++; 
 				if (succ) {
-					this.inc(this.bailoutNumberSucc, bails); 
+					bailoutNS = this.inc(bailoutNS, bails); 
 					this.successfulBail++;
+					if (log) System.out.println("succ");
 				} else {
 					this.failedBail++;
+					if (log) System.out.println("fail");
 				}
-				this.inc(this.bailoutNumber, bails); 
+				bailoutN = this.inc(bailoutN, bails); 
 			}
 			
 
 		}
+		
+		this.bailoutNumber = new Distribution(bailoutN,included); 
+		this.bailoutNumberSucc = new Distribution(bailoutNS,included); 
 	}
 	
 
@@ -166,7 +189,7 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 		path.add(a);
 		list.add(path);
 		Node[] nodes = g.getNodes();
-		while (path.size() <= max) {
+		while (path != null && path.size() <= max) {
 			int[] out = nodes[path.lastElement()].getOutgoingEdges();
 			for (int i: out) {
 				if (i == b) continue; //path can't go via b 
@@ -180,6 +203,7 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 					vec.add(new Edge(path.lastElement(),c)); 
 					res.add(vec); 
 				} else {
+					if (list.size() < 1000) {
 					//check that i does not create loop 
 					boolean loop = false;
 					for (int j = 0; j < path.size(); j++) {
@@ -194,6 +218,7 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 					Vector<Integer> pathc = (Vector<Integer>) path.clone(); 
 					pathc.add(i);
 					list.add(pathc);
+					}
 				}
 			}
 			path = list.poll(); 
@@ -230,11 +255,12 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 		if (this.bailoutTime == -1) {
 			this.bailoutTime = this.transactions[this.transactions.length-1].getTime(); 
 		}
-		if (limit <= this.bailoutTime) {
+		if (limit <= this.bailoutTime || done) {
 			super.unlockAllUntil(limit, g);
 		} else {
 			super.unlockAllUntil(this.bailoutTime+wait, g);
 			this.bailout(g);
+			done = true; 
 		}
 		
 	}
@@ -243,7 +269,7 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 		Vector<ScheduledUnlock[]> vec = new Vector<ScheduledUnlock[]>();
 		HashMap<Integer, ScheduledUnlock> preLink = new HashMap<Integer, ScheduledUnlock>();
 		Iterator<ScheduledUnlock> it = this.qLocks.iterator();
-		if (log) System.out.println("Total available locks: " + this.qLocks.size()); 
+		//if (log) System.out.println("Total available locks: " + this.qLocks.size()); 
 		while (it.hasNext()) {
 			ScheduledUnlock lock = it.next();
 			if (lock.getEdge().equals(e)) {
@@ -272,12 +298,19 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 	@Override
 	public Single[] getSingles() {
 		Single[] singles = super.getSingles();
-		Single[] allSingle = new Single[singles.length+11];
+		Single[] allSingle = new Single[singles.length+7];
 		for (int i = 0; i < singles.length; i++) {
 			allSingle[i] = singles[i]; 
 		}
-		
-		
+		int n = this.noBailNode + this.failedBailSrc + this.noNeedtoBail + this.successfulBail + this.failedBail; 
+		int index = singles.length;
+		allSingle[index++] = new Single("NO_BAIL_NODE", (double)this.noBailNode/(double)n); 
+		allSingle[index++] = new Single("SRC_BAIL_FAIL", (double)this.failedBailSrc/(double)n); 
+		allSingle[index++] = new Single("NO_NEED_BAIL", (double)this.noNeedtoBail/(double)n); 
+		allSingle[index++] = new Single("SUCC_BAIL_ALL", (double)this.successfulBail/(double)n); 
+		allSingle[index++] = new Single("FAIL_BAIL_ALL", (double)this.failedBail/(double)n); 
+		allSingle[index++] = new Single("SUCC_BAIL_ONLY", (double)this.successfulBail/(double)(this.successfulBail+this.failedBail)); 
+		allSingle[index++] = new Single("FAIL_BAIL_ONLY", (double)this.failedBail/(double)(this.successfulBail+this.failedBail));
 
 		return allSingle; 
 	}
@@ -285,8 +318,8 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 	@Override
 	public boolean writeData(String folder) {
 		boolean succ = super.writeData(folder);
-		
-		
+		succ = succ & DataWriter.writeWithIndex(this.bailoutNumber.getDistribution(), this.key + "_BAILOUT_NUMBER" ,folder);
+		succ = succ & DataWriter.writeWithIndex(this.bailoutNumberSucc.getDistribution(), this.key + "_BAILOUT_NUMBER_SUCC" ,folder);
 		return succ; 
 	}
 	

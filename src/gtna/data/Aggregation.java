@@ -84,6 +84,7 @@ public class Aggregation {
 			int runs, String key) {
 		double[][][] data = new double[runs][][];
 		for (int run = 0; run < runs; run++) {
+			//System.out.println(key); 
 			data[run] = DataReader.readDouble2D(s.getFilenameRun(run, m, key));
 		}
 		boolean cdf = Config.getBoolean(key + "_DATA_IS_CDF");

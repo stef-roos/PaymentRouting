@@ -118,7 +118,7 @@ public class LNParams extends GraphProperty {
     	  rate = -0.000001 * (4*Math.log(1-pdash)); 
       }
       double delay = 144;
-      this.params.put(e, new double[]{base, rate, delay});
+      this.params.put(e, new double[]{base, rate, delay, 0, -1});
     }
     return this;
   }

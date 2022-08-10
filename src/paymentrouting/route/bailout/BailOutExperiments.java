@@ -40,13 +40,45 @@ public class BailOutExperiments {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		int i = Integer.parseInt(args[0]); //run; varied between 0 and 9 
-		double p = Double.parseDouble(args[1]); // probability to delay/not settle/grief
+//		int i = Integer.parseInt(args[0]); //run; varied between 0 and 9 
+//		double p = Double.parseDouble(args[1]); // probability to delay/not settle/grief
+//		lightningProbCount(i,p,0.04); 
+//		lightningProbCount(i,p,10); 
+		summarizeScenario2();
 		//lightningDelay(i,p); //experiments with nodes delaying 
 		//lightningNoPeacefulSettlement(i,p); //experiments with nodes not settling 
 		//lightningGriefing(i); //griefing 
 		//lightningMulti(i);  //experiments with more than 1 bailout node 
  
+	}
+	
+	
+	
+	/**
+	 * run experiments for fig 5  
+	 * @param run run #
+	 * @param probability prob to delay
+	 * @param d 
+	 */
+	public static void lightningProbCountSum(double probability, double d) {
+		System.out.println(probability); 
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+true);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailCount/bailoutProbCount/"+probability+"/");
+		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
+		Transformation[] trans = new Transformation[] {new InitCapacities(4000000,BalDist.EXP), 
+				new Transactions(400000, TransDist.EXP, false, 100000, d, false), new InitLNParams()};
+		Network net = new ReadableFile("LIGHTNING", "LIGHTNING", file, trans);
+		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(probability), 
+				new PaymentReactionNoPeaceful(probability)};
+
+		double wait = 60; 
+		Metric[] m = new Metric[reacts.length];
+		for (int i = 0; i < reacts.length; i++) {
+		   m[i] =  new RoutePaymentBailoutCount(new LND(new HopDistance()),1,0.1,reacts[i],
+						wait); 
+		} 
+		Series.generate(net, m, 10); 
+	
 	}
 	
 	/**
@@ -165,12 +197,12 @@ public class BailOutExperiments {
 	 * @param run run #
 	 * @param probability prob to delay
 	 */
-	public static void lightningDelay(int run, double probability) {
+	public static void lightningDelay(int run, double probability, double tph) {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailout/");
 		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
 		Transformation[] trans = new Transformation[] {new InitCapacities(4000000,BalDist.EXP), 
-				new Transactions(400000, TransDist.EXP, false, 100000, 10, false), new InitLNParams()};
+				new Transactions(400000, TransDist.EXP, false, 100000, tph, false), new InitLNParams()};
 		Network net = new ReadableFile("LIGHTNING", "LIGHTNING", file, trans);
 		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(probability)};
 		RoutePaymentBailout.BailoutFee[] bfees = new RoutePaymentBailout.BailoutFee[] { BailoutFee.NORMAL, BailoutFee.FACTOR, BailoutFee.TOTAL, BailoutFee.TOTALEDGE,
@@ -273,6 +305,47 @@ public class BailOutExperiments {
 		
 				
 		}
+	
+	public static void summarizeScenario2() {
+		String[] metrics = new String[] {"NO_BAIL_NODE", "NO_NEED_BAIL", "SUCC_BAIL_ALL", "FAIL_BAIL_ALL", "SUCC_BAIL_ONLY", "FAIL_BAIL_ONLY"};
+		String[] ps = {"0.1", "0.2", "0.3", "0.4", "0.5"}; 
+		for (int i = 0; i < metrics.length; i++) {
+			System.out.println(metrics[i]);
+			String[] att = new String[]{"DELAY_RANDOM", "NO_PEACEFUL_SETTLEMENT"};
+			String[] con = new String[]{"0.04", "10.0"}; 
+			try {
+				BufferedWriter bw = new BufferedWriter(new FileWriter("./data/bailCount/bailoutProbCount/"+metrics[i]+".dat"));
+				String line = "#";
+				for (int j = 0; j < 2; j++) {
+					for (int k = 0; k < 2; k++) {
+						line = line + " " + att[j] + "-" + con[k]; 
+					}
+				}
+				bw.write(line);
+				for (int p = 0; p < ps.length; p++) {
+					line = ps[p];
+					for (int j = 0; j < 2; j++) {
+						for (int k = 0; k < 2; k++) {
+							double[] res = SummarizeResults.getSingleVar("data/bailCount/bailoutProbCount/"+ps[p]+"/"
+									+ "READABLE_FILE_LIGHTNING-6329--INIT_CAPACITIES-4000000.0-EXP--"
+									+ "TRANSACTIONS-400000.0-EXP-false-100000-"+con[k]+"-false--INIT_LN_PARAMS/"
+									+ "ROUTE_PAYMENT-1-true-HOP_DISTANCE-LND-2147483647-"+att[j]+"-60.0-0.1"
+									+ "/_singles.txt",
+									metrics[i]); 
+							line = line + " " + res[0];
+						}
+					}
+					bw.newLine();
+					bw.write(line);
+				}
+				bw.flush();
+				bw.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}	
+	}
 	
 	/**
 	 * print files used to generate figure 4 (one per subfigure) 
@@ -493,6 +566,33 @@ public class BailOutExperiments {
 	}
 	
 	/**
+	 * run experiments for fig 5  
+	 * @param run run #
+	 * @param probability prob to delay
+	 * @param d 
+	 */
+	public static void lightningProbCount(int run, double probability, double d) {
+		System.out.println(probability); 
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailoutProbCount/"+probability+"/");
+		String file  = "lightning/lngraph_2020_03_01__04_00.graph";
+		Transformation[] trans = new Transformation[] {new InitCapacities(4000000,BalDist.EXP), 
+				new Transactions(400000, TransDist.EXP, false, 100000, d, false), new InitLNParams()};
+		Network net = new ReadableFile("LIGHTNING", "LIGHTNING", file, trans);
+		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(probability), 
+				new PaymentReactionNoPeaceful(probability)};
+
+		double wait = 60; 
+		Metric[] m = new Metric[reacts.length];
+		for (int i = 0; i < reacts.length; i++) {
+		   m[i] =  new RoutePaymentBailoutCount(new LND(new HopDistance()),1,0.1,reacts[i],
+						wait); 
+		} 
+		Series.generate(net, m, run, run); 
+	
+	}
+	
+	/**
 	 * run experiments for Table 1
 	 * @param run
 	 */
@@ -619,6 +719,7 @@ public class BailOutExperiments {
 	public static void testBA() {
 		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
 		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailout/");
+		
 		Transformation[] trans = new Transformation[] {new InitCapacities(200,BalDist.EXP), 
 				new Transactions(200, TransDist.NORMAL, false, 1000, false, true), new InitLNParams()};
 		Network net = new BarabasiAlbert(500,5, trans);
@@ -644,6 +745,25 @@ public class BailOutExperiments {
 						BailoutFee.NEVER, 0, AcceptFee.ALWAYS, 0, wait); 
 		} 
 		Series.generate(net, m, 1); 
+	
+	}
+	
+	public static void testBACount() {
+		Config.overwrite("SKIP_EXISTING_DATA_FOLDERS", ""+false);
+		Config.overwrite("MAIN_DATA_FOLDER", "./data/bailoutCount/");
+		Config.overwrite("SERIES_GRAPH_WRITE", ""+true);
+		Transformation[] trans = new Transformation[] {new InitCapacities(200,BalDist.EXP), 
+				new Transactions(200, TransDist.NORMAL, false, 10, false, true), new InitLNParams()};
+		Network net = new BarabasiAlbert(500,20, trans);
+		PaymentReaction[] reacts = new PaymentReaction[] {new PaymentReactionDelayRandom(0.5)};
+		double wait = 60; 
+		Metric[] m = new Metric[reacts.length];
+		for (int i = 0; i < reacts.length; i++) {
+		   m[i] 
+				=  new RoutePaymentBailoutCount(new LND(new HopDistance()),1,0.1, "data/bailout/records-BA-"+i+".txt",reacts[i],
+						wait); 
+		} 
+		Series.generate(net, m, 1,1); 
 	
 	}
 	

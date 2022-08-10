@@ -195,7 +195,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
                         if (l != Double.MAX_VALUE) {
                         	l = l - select.decreaseLock(g, curN, out[k]); 
                         }
-   						this.lock(curN, out[k], partVals[k], cur.nr, l); 
+   						this.lock(curN, out[k], partVals[k], cur.nr, l*10*60); 
                			if (out[k] != cur.getDst()) {
                				//more hops
                				Vector<Integer> res = (Vector<Integer>)past.clone();
@@ -459,6 +459,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 			}
 			Edge e = new Edge(s,t); 
 			step = step + this.getTimeToUnlock(step, e, succ, val); 
+			if (log) System.out.println("Step " + step); 
 			//retrieve lock 
 			HashMap<Integer, ScheduledUnlock> map = this.preScheduled.get(e);
 			ScheduledUnlock lock = null;

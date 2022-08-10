@@ -93,6 +93,7 @@ public class Distribution {
 
 	private double[] computeCdf() {
 		double[] cdf = new double[this.distribution.length];
+		if (cdf.length == 0) return cdf; 
 		cdf[0] = this.distribution[0];
 		for (int i = 1; i < cdf.length; i++) {
 			cdf[i] = cdf[i - 1] + this.distribution[i];
@@ -114,6 +115,7 @@ public class Distribution {
 
 	private double computeMedian() {
 		int index = 0;
+		if (this.cdf.length == 0) return 0; 
 		double threshold = this.cdf[this.cdf.length - 1] / 2.0;
 		while (index < this.cdf.length && this.cdf[index] <= threshold) {
 			index++;

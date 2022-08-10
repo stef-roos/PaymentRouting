@@ -40,7 +40,7 @@ public class PaymentReactionNoPeaceful extends PaymentReaction {
 			if (par == null) {
 				return 0;
 			} else {
-				return par.getDelay(e); 
+				return par.getDelay(e)*60*10; 
 			}
 		}
 		
