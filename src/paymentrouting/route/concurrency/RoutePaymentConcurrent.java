@@ -110,7 +110,7 @@ public class RoutePaymentConcurrent extends RoutePayment {
 		   this.unlockAllUntil(curTime, g);
 		   Vector<PartialPath> vec = this.ongoingTr.get(cur.getNr()); 
 		   if (vec != null) {
-		      boolean[] state = this.checkFinal(vec, cur.getDst());
+		      boolean[] state = this.checkFinal(vec, cur.getDst(), cur);
 		      if (state[0]) {
 		    	  //done 
 		    	  //if final: schedule + compute stats 
@@ -486,9 +486,10 @@ public class RoutePaymentConcurrent extends RoutePayment {
 	 * check whether a routing is finished, if so check if it was successful
 	 * @param vec
 	 * @param dst
+	 * @param cur 
 	 * @return
 	 */
-	public boolean[] checkFinal(Vector<PartialPath> vec, int dst) {
+	public boolean[] checkFinal(Vector<PartialPath> vec, int dst, ConcurrentTransaction cur) {
 		boolean f = true; //final?
 		boolean s = true; //successful?
 		for (int i = 0; i < vec.size(); i++) {
