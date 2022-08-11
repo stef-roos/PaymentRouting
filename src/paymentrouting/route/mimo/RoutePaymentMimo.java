@@ -2,8 +2,11 @@ package paymentrouting.route.mimo;
 
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
+import gtna.data.Single;
 import gtna.graph.Edge;
 import gtna.graph.Graph;
 import paymentrouting.route.PartialPath;
@@ -16,6 +19,7 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 	ConcurrentTransaction[][] succParts; 
 	double[] failTime; 
 	AtomicMapping mimo; 
+	MimoMapping originalAtomic;
 	boolean[] processed; 
 	double coll = 0; //overall collaterral locked
 	double collSuccess = 0; //locked for successful payments 
@@ -36,6 +40,7 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 		this.succParts = new ConcurrentTransaction[mimo.atomicSet.size()][]; 
 		this.failTime = new double[mimo.atomicSet.size()];
 		this.processed = new boolean[this.transactions.length]; 
+		this.originalAtomic = (MimoMapping)g.getProperty("ORIGINAL_ATOMIC"); 
 	}
 	
 	public boolean[] checkFinal(Vector<PartialPath> vec, int dst, ConcurrentTransaction cur) {
@@ -159,7 +164,7 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 				lock.finalize(step, succ);
 				this.coll = this.coll + lock.getVal();
 				if (succ) {
-					this.collSuccess + lock.getVal(); 
+					this.collSuccess = this.collSuccess  + lock.getVal(); 
 				}
 			} else {
 			    lock = new ScheduledUnlock(this.curTime, e, step, succ, val, this.curT); 
@@ -168,5 +173,53 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 			t = s; 
 		}
 	}
+	
+	public void postprocess() {
+		super.postprocess();
+		//divide success probs 
+		this.allSucc = this.allSucc/(double)this.transactions.length;
+		this.atomicSucc = this.atomicSucc/(double)this.failTime.length;
+		this.atomicSuccNonSingle = this.atomicSuccNonSingle/(double)this.atomicSuccNonSingle;
+		//check original transactions
+		Set<Integer> mapping = this.originalAtomic.segmentMapping.keySet();
+		Iterator<Integer> it = mapping.iterator();
+		while (it.hasNext()) {
+			int tx = it.next();
+			int[] ats = this.originalAtomic.getSegmentIds(tx);
+			boolean done = true;
+			double f = 0;
+			for (int i = 0; i < ats.length; i++) {
+				if (this.failTime[ats[i]] == -1) {
+					f++;
+				} else {
+					done = false;
+				}
+			}
+			f = f/(double)ats.length; 
+			if (done) {
+				this.originalSucc++;
+			}
+			this.originalFracSucc = this.originalFracSucc + f; 
+		}
+		this.originalSucc = this.originalSucc/(double)mapping.size();
+		this.originalFracSucc = this.originalFracSucc/(double)mapping.size();
+	}
 
+	public Single[] getSingles() {
+		Single[] singles1 = super.getSingles();
+		Single[] singleNew = new Single[singles1.length + 7];
+		for (int i = 0; i < singles1.length; i++) {
+			singleNew[i] = singles1[i];
+		}
+		int index = singles1.length;
+		singleNew[index++] = new Single("COLLATERALL", this.coll); 
+		singleNew[index++] = new Single("COLLATERALL_SUCC", this.collSuccess); 
+		singleNew[index++] = new Single("SUCC_FINAL", this.allSucc); 
+		singleNew[index++] = new Single("SUCC_ATOMIC", this.atomicSucc);
+		singleNew[index++] = new Single("SUCC_ATOMIC_NONSINGLE", this.atomicSuccNonSingle);
+		singleNew[index++] = new Single("SUCC_ORIGINAL", this.originalSucc);
+		singleNew[index++] = new Single("SUCC_ORIGINAL_FRAC", this.originalFracSucc);
+		
+		return singleNew; 
+	}
 }
