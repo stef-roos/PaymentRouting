@@ -1,29 +1,22 @@
 package paymentrouting.sourcerouting;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Random;
-import java.util.Vector;
 
 import gtna.graph.Edge;
 import gtna.graph.Graph;
-import gtna.graph.Node;
 import paymentrouting.datasets.LNParams;
 import paymentrouting.route.DistanceFunction;
 import paymentrouting.route.RoutePayment;
 import paymentrouting.route.fee.PathFee;
 import treeembedding.credit.CreditLinks;
 
-public class ShortestPath extends SourceStep implements CostFunction{
-     
+public class CheapestPath extends SourceStep implements CostFunction{
+    
 
 
-	public ShortestPath(DistanceFunction d) {
-		super("SHORTEST_PATH", d);
+	public CheapestPath(DistanceFunction d) {
+		super("CHEAPEST_PATH", d);
 	}
 
 	@Override
@@ -31,23 +24,16 @@ public class ShortestPath extends SourceStep implements CostFunction{
 		CreditLinks edgeweights = (CreditLinks) g.getProperty("CREDIT_LINKS");
 		LNParams par = (LNParams) g.getProperty("LN_PARAMS"); 
 		DijkstraResult res = Dijkstra.dijkstra(rp, edgeweights, g.getNodes(), src, dst, val, this, new HashSet<Edge>(), par); 
-      if (res == null) {
-      	return null; 
-      }
+     if (res == null) {
+     	return null; 
+     }
 		PathFee pfee = res.turnPathFee(); 
 		return new PathFee[] {pfee};
 	}
 
 	@Override
 	public double compute(int src, int dst, double amt, CreditLinks edgeweights, LNParams params, boolean direct) {
-		if (params != null) {
-			double[] ps = params.getParams(src, dst);
-		    double base = ps[0];
-		    if (base == -1) {
-		    	return Double.MAX_VALUE/2;
-		    }
-		}
-	    return 1;
+		return this.computeFee(src, dst, amt, edgeweights, params, direct); 
 	}
 
 

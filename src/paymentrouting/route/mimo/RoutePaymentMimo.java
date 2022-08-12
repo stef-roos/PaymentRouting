@@ -212,13 +212,13 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 			singleNew[i] = singles1[i];
 		}
 		int index = singles1.length;
-		singleNew[index++] = new Single("COLLATERALL", this.coll); 
-		singleNew[index++] = new Single("COLLATERALL_SUCC", this.collSuccess); 
-		singleNew[index++] = new Single("SUCC_FINAL", this.allSucc); 
-		singleNew[index++] = new Single("SUCC_ATOMIC", this.atomicSucc);
-		singleNew[index++] = new Single("SUCC_ATOMIC_NONSINGLE", this.atomicSuccNonSingle);
-		singleNew[index++] = new Single("SUCC_ORIGINAL", this.originalSucc);
-		singleNew[index++] = new Single("SUCC_ORIGINAL_FRAC", this.originalFracSucc);
+		singleNew[index++] = new Single(this.key + "_COLLATERAL", this.coll); 
+		singleNew[index++] = new Single(this.key + "_COLLATERAL_SUCC", this.collSuccess); 
+		singleNew[index++] = new Single(this.key + "_SUCC_FINAL", this.allSucc); 
+		singleNew[index++] = new Single(this.key + "_SUCC_ATOMIC", this.atomicSucc);
+		singleNew[index++] = new Single(this.key + "_SUCC_ATOMIC_NONSINGLE", this.atomicSuccNonSingle);
+		singleNew[index++] = new Single(this.key + "_SUCC_ORIGINAL", this.originalSucc);
+		singleNew[index++] = new Single(this.key + "_SUCC_ORIGINAL_FRAC", this.originalFracSucc);
 		
 		return singleNew; 
 	}
