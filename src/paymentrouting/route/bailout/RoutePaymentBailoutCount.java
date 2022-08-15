@@ -17,6 +17,7 @@ import gtna.util.parameter.StringParameter;
 import paymentrouting.datasets.LNParams;
 import paymentrouting.route.PartialPath;
 import paymentrouting.route.PathSelection;
+import paymentrouting.route.concurrency.ConcurrentTransaction;
 import paymentrouting.route.concurrency.RoutePaymentConcurrent;
 import paymentrouting.route.concurrency.ScheduledUnlock;
 
@@ -242,8 +243,8 @@ public class RoutePaymentBailoutCount extends RoutePaymentConcurrent{
 		}
 	}
 	
-	public boolean[] checkFinal(Vector<PartialPath> vec, int dst) {
-		boolean[] res = super.checkFinal(vec, dst);
+	public boolean[] checkFinal(Vector<PartialPath> vec, int dst, ConcurrentTransaction cur) {
+		boolean[] res = super.checkFinal(vec, dst, cur);
 		if (res[0] && res[1]) {
 			res[1] = this.react.receiverReaction(dst); //receiver can decide to fail payment 
 		}
