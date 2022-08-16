@@ -16,10 +16,10 @@ import paymentrouting.route.concurrency.RoutePaymentConcurrent;
 import paymentrouting.route.concurrency.ScheduledUnlock;
 
 public class RoutePaymentMimo extends RoutePaymentConcurrent {
-	ConcurrentTransaction[][] succParts; 
-	double[] failTime; 
-	AtomicMapping mimo; 
-	MimoMapping originalAtomic;
+	ConcurrentTransaction[][] succParts; //parts of orbit that have succeeded up to now 
+	double[] failTime; //time atomic payment failed, -1 if successful, 0 if not known yet if successful
+	AtomicMapping atomic; //map each mimo transaction to atomic payments 
+	MimoMapping originalAtomic; //map original payments to atomic payments 
 	boolean[] processed; 
 	double coll = 0; //overall collaterral locked
 	double collSuccess = 0; //locked for successful payments 
@@ -29,6 +29,7 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 	int atomicNonSingle = 0; //number of segments with at least two segments 
 	double originalSucc = 0; //fraction of payments for which all payment parts succeed
 	double originalFracSucc = 0; //average fraction of payment that is successful 
+	HashMap<Integer, Vector<PartialPath>> inwaiting; //vectors of partial payments terminated 
 
 	public RoutePaymentMimo(PathSelection ps, int trials, double latency) {
 		super(ps, trials, latency);
@@ -36,28 +37,32 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 	
 	public void preprocess(Graph g) {
 		super.preprocess(g);
-		this.mimo = (AtomicMapping)g.getProperty("MIMO"); 
-		this.succParts = new ConcurrentTransaction[mimo.atomicSet.size()][]; 
-		this.failTime = new double[mimo.atomicSet.size()];
+		this.atomic = (AtomicMapping)g.getProperty("ATOMIC_MAPPING"); 
+		this.succParts = new ConcurrentTransaction[atomic.atomicSet.size()][]; 
+		this.failTime = new double[atomic.atomicSet.size()];
 		this.processed = new boolean[this.transactions.length]; 
-		this.originalAtomic = (MimoMapping)g.getProperty("ORIGINAL_ATOMIC"); 
+		this.originalAtomic = (MimoMapping)g.getProperty("MIMO_MAPPING"); 
+		this.inwaiting = new HashMap<Integer, Vector<PartialPath>>(); 
 	}
 	
 	public boolean[] checkFinal(Vector<PartialPath> vec, int dst, ConcurrentTransaction cur) {
 		if (this.processed[this.curT]) {
 			//already been processed 
-			int set = this.mimo.atomicsetIndex.get(this.curT);
+			int set = this.atomic.atomicsetIndex.get(this.curT);
 			boolean[] res = new boolean[2];
 			res[0] = true;
-			if (this.failTime[set] != -1) {
+			//all atomic payment successul 
+			if (this.failTime[set] == -1) {
 				res[1] = true;
 			}
 			return res; 
 		}
+		//call original checkFinal 
 		boolean[] res = super.checkFinal(vec, dst,cur);
-		if (res[0]) {
-		  int set = this.mimo.atomicsetIndex.get(this.curT);
-		  int[] allTx = this.mimo.atomicSet.get(set); 
+		if (res[0]) { //if we are done (otherwise just continue as without mimo) 
+			//add new transaction to successful transactions for the orbit 
+		  int set = this.atomic.atomicsetIndex.get(this.curT);
+		  int[] allTx = this.atomic.atomicSet.get(set); 
 		  if (this.succParts[set] == null) {
 			  this.succParts[set] = new ConcurrentTransaction[allTx.length];
 			  if (this.succParts[set].length > 1) {
@@ -72,7 +77,8 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 					  //transaction already succeeded, can now be failed due to atomicity; 
 					  //add to queue to resolve timelocks after linklatency delay to inform nodes of failure 
 					  this.succParts[set][i].setTime(curTime + this.linklatency); 
-					   ongoingTr.put(this.succParts[set][i].getNr(),vec); //not correct vec but does not matter as not processed again 
+					  Vector<PartialPath> v = this.inwaiting.remove(this.succParts[set][i].getNr()); 
+					   ongoingTr.put(this.succParts[set][i].getNr(),v); 
 					   qTr.add(this.succParts[set][i]);
 				  }
 			  }   
@@ -102,16 +108,21 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 			 if (done) {
 				 this.failTime[set] = -1; 
 			    for (int i = 0; i < this.succParts[set].length; i++) { //queue for scheduling timelocks
+			    	if (i == index) continue; 
 				   this.succParts[set][i].setTime(curTime + this.linklatency); 
-				   ongoingTr.put(this.succParts[set][i].getNr(),vec); //not correct vec but does not matter as not processed again 
+				   Vector<PartialPath> v = this.inwaiting.remove(this.succParts[set][i].getNr());
+				   ongoingTr.put(this.succParts[set][i].getNr(),v); 
 				   qTr.add(this.succParts[set][i]);
 			    }
 			    this.atomicSucc++;
 			    this.allSucc = this.allSucc + allTx.length; 
-			    if (allTx.length > 2) {
-			    	this.atomicNonSingle++; 
+			    if (allTx.length > 1) {
+			    	this.atomicSuccNonSingle++; 
 			    }
-			 }   
+			 } else {
+				 //add to waiting until decided whether orbit/segment fails/succeeeds  
+				 this.inwaiting.put(this.curT, vec); 
+			 }
 			 
 		 }
 		 	  
@@ -130,13 +141,18 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 	
 	public void scheduleSuccessful(Vector<PartialPath> paths, double curTime) {
 		//only schedule once all partial payments done
-		int set = this.mimo.atomicsetIndex.get(this.curT);
-		if (this.failTime[set] == -1) {
+		int set = this.atomic.atomicsetIndex.get(this.curT);
+		if (this.failTime[set] == -1) { //successful 
 			super.scheduleSuccessful(paths, curTime);
+		} else {
+			if (this.failTime[set] > 0) { //atomic payment failed even if this one succeeded 
+				super.scheduleNotSuccessful(paths, curTime, paths.get(0).node, paths.get(0).pre.size());
+			}
 		}
 	}
 	
 	public void schedulePath(Vector<Integer> vec, double curTime, double val, boolean succ) {
+		//as for super class but for collateral stats 
 		double step = curTime; 
 		int t = vec.get(vec.size()-1); 
 		for (int j = vec.size()-2; j>= 0; j--) {
@@ -162,13 +178,14 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 			}
 			if (lock != null) {
 				lock.finalize(step, succ);
-				this.coll = this.coll + lock.getVal();
-				if (succ) {
-					this.collSuccess = this.collSuccess  + lock.getVal(); 
-				}
+				
 			} else {
 			    lock = new ScheduledUnlock(this.curTime, e, step, succ, val, this.curT); 
 			}    
+			this.coll = this.coll + lock.getVal(); //payment val was locked 
+			if (succ) {
+				this.collSuccess = this.collSuccess  + lock.getVal(); //was locked & succeess  
+			}
 			this.qLocks.add(lock); 
 			t = s; 
 		}
@@ -179,7 +196,7 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 		//divide success probs 
 		this.allSucc = this.allSucc/(double)this.transactions.length;
 		this.atomicSucc = this.atomicSucc/(double)this.failTime.length;
-		this.atomicSuccNonSingle = this.atomicSuccNonSingle/(double)this.atomicSuccNonSingle;
+		this.atomicSuccNonSingle = this.atomicSuccNonSingle/(double)this.atomicNonSingle;
 		//check original transactions
 		Set<Integer> mapping = this.originalAtomic.segmentMapping.keySet();
 		Iterator<Integer> it = mapping.iterator();
@@ -187,19 +204,21 @@ public class RoutePaymentMimo extends RoutePaymentConcurrent {
 			int tx = it.next();
 			int[] ats = this.originalAtomic.getSegmentIds(tx);
 			boolean done = true;
-			double f = 0;
+			double succVal = 0;
+			double allVal = 0;
 			for (int i = 0; i < ats.length; i++) {
+				allVal = allVal + this.transactions[ats[i]].getVal();
 				if (this.failTime[ats[i]] == -1) {
-					f++;
+					succVal= succVal + this.transactions[ats[i]].getVal();
 				} else {
 					done = false;
 				}
 			}
-			f = f/(double)ats.length; 
+			succVal = succVal/allVal; 
 			if (done) {
 				this.originalSucc++;
 			}
-			this.originalFracSucc = this.originalFracSucc + f; 
+			this.originalFracSucc = this.originalFracSucc + succVal; 
 		}
 		this.originalSucc = this.originalSucc/(double)mapping.size();
 		this.originalFracSucc = this.originalFracSucc/(double)mapping.size();
