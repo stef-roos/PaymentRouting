@@ -8,7 +8,7 @@ Select a test to run in class PaymentTest, which either run some key algorithms 
 or generates Barabasi Albert or ErdosRenyi graphs to run the algorithms on
 
 
-The master branch is the basic simulator without concurrency, the concurrency branch adds concurrency for a future version of the paper. 
+*The master branch is the basic simulator without concurrency, I suggest using the concurrency branch for actual research* 
 
 ##Code structure 
 
